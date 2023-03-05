@@ -45,47 +45,17 @@ La estructura `Organización` tiene los siguientes campos:
 
 ```json
 {
-    "id": 1,
-    "created_at": "2023-03-04T20:00:00Z",
-    "updated_at": "2023-03-04T20:00:00Z",
-    "deleted_at": null,
-    "Nombre": "Mi Organizacion",
-    "Uipathname": "mi_organizacion",
-    "Tenantname": "mi_tenant",
-    "AppID": "qwerty1234",
-    "AppSecret": "abcd5678",
-    "Clientes": [
-        {
-            "id": 1,
-            "created_at": "2023-03-04T20:00:00Z",
-            "updated_at": "2023-03-04T20:00:00Z",
-            "deleted_at": null,
-            "Nombre": "Mi Cliente",
-            "Direccion": "123 Main St",
-            "Telefono": "555-1234",
-            "OrganizacionID": 1
-        }
-    ],
-    "Procesos": [
-        {
-            "id": 1,
-            "created_at": "2023-03-04T20:00:00Z",
-            "updated_at": "2023-03-04T20:00:00Z",
-            "deleted_at": null,
-            "Nombre": "Proceso 1",
-            "Descripcion": "Este es el proceso 1",
-            "OrganizacionID": 1
-        },
-        {
-            "id": 2,
-            "created_at": "2023-03-04T20:00:00Z",
-            "updated_at": "2023-03-04T20:00:00Z",
-            "deleted_at": null,
-            "Nombre": "Proceso 2",
-            "Descripcion": "Este es el proceso 2",
-            "OrganizacionID": 1
-        }
-    ]
+  "ID": 1,
+  "CreatedAt": "2021-10-05T18:00:00Z",
+  "UpdatedAt": "2021-10-05T18:00:00Z",
+  "DeletedAt": null,
+  "Nombre": "Organizacion de Ejemplo",
+  "Uipathname": "https://cloud.uipath.com/org-example",
+  "Tenantname": "org-example",
+  "AppID": "********",
+  "AppSecret": "********",
+  "Clientes": [...],
+  "Procesos": [...]
 }
 ```
 
@@ -94,11 +64,7 @@ La estructura `Organización` tiene los siguientes campos:
 La función `GetAll` se utiliza para recuperar todas las organizaciones de la base de datos. Toma un objeto `db` de GORM como argumento y devuelve un slice de punteros a la estructura `Organización`.
 
 ```go
-func (Organización) GetAll(db *gorm.DB) []*Organización {
-	var organizaciones []*Organización
-	db.Preload("Procesos").Preload("Clientes").Find(&organizaciones)
-	return organizaciones
-}
+func (Organización) GetAll(db *gorm.DB) []*Organización 
 ```
 La función utiliza la función `Preload` de GORM para precargar las relaciones de `Procesos` y `Clientes` de cada registro de
 Organización. Luego, utiliza la función `Find` de GORM para recuperar todas las organizaciones y almacenarlas en un slice
@@ -111,9 +77,7 @@ estructura `Organización` que se llama en `this` con los datos correspondientes
 identificador especificado.
     
 ```go
-func (this *Organización) Get(db *gorm.DB, id uint) {
-    db.Preload("Procesos").Preload("Clientes").First(&this, id)
-}
+func (this *Organización) Get(db *gorm.DB, id uint) 
 ``` 
 
 ### TableName
@@ -145,32 +109,21 @@ La estructura `Cliente` representa un cliente de una organización y tiene los s
   "ID": 1,
   "Nombre": "John",
   "Apellido": "Doe",
-  "Email": "john.doe@example.com",
-  "OrganizacionID": 2,
+  "Email": "johndoe@example.com",
+  "OrganizacionID": 1,
   "Organizacion": {
-    "ID": 2,
-    "Nombre": "Acme Inc.",
-    "Direccion": "123 Main St.",
-    "Telefono": "555-1234"
+    "ID": 1,
+    "Nombre": "Mi Organizacion",
+    "Uipathname": "mi_organizacion",
+    "Tenantname": "mi_tenant",
+    "AppID": "app_id",
+    "AppSecret": "app_secret",
+    "Clientes": [...],
+    "Procesos": [...]
   },
-  "Procesos": [
-    {
-      "ID": 5,
-      "Nombre": "Proceso A",
-      "Descripcion": "Proceso de prueba A",
-      "FechaInicio": "2022-01-01",
-      "FechaFin": "2022-12-31"
-    },
-    {
-      "ID": 8,
-      "Nombre": "Proceso B",
-      "Descripcion": "Proceso de prueba B",
-      "FechaInicio": "2022-03-01",
-      "FechaFin": "2022-11-30"
-    }
-  ]
+  "Procesos": [...]
 }
-``` 
+```
 
 Además, la estructura cuenta con los siguientes métodos:
 
@@ -198,7 +151,7 @@ func (Cliente) GetByProcess(db *gorm.DB, id uint) []*Cliente
 
 Este método devuelve todos los clientes que participan en el proceso con el identificador `id`, incluyendo la organización a la que pertenecen y los demás procesos en los que participan.
 
-## Función TableName
+### Función TableName
 
 ```go
 func (Cliente) TableName() string
@@ -221,6 +174,31 @@ La estructura `Proceso` representa un proceso de Uipath y tiene los siguientes c
 - `IncidentesProceso`: lista de incidentes relacionados con el proceso.
 - `Clientes`: lista de clientes que participan en el proceso.
 - `Usuarios`: lista de usuarios asignados al proceso.
+
+```json
+{
+  "id": 1,
+  "nombre": "Proceso de ejemplo",
+  "folderid": 1234,
+  "warning_tolerance": 10,
+  "error_tolerance": 0,
+  "fatal_tolerance": 0,
+  "organizacion_id": 1,
+  "organizacion": {
+    "id": 1,
+    "nombre": "Organización de ejemplo",
+    "uipathname": "https://cloud.uipath.com/",
+    "tenantname": "tenant_name",
+    "app_id": "app_id_example",
+    "app_secret": "app_secret_example",
+    "clientes": [...],
+    "procesos": [...]
+  },
+  "incidentes_proceso": [...],
+  "clientes": [...],
+  "usuarios": [...]
+}
+```
 
 Además, la estructura cuenta con los siguientes métodos:
 
@@ -276,6 +254,33 @@ La estructura `IncidenteProceso` representa un incidente relacionado con un proc
 - `Estado`: estado del incidente (no puede ser nulo, valor por defecto: 1).
 - `Detalles`: lista de detalles relacionados con el incidente.
 
+```json
+{
+  "ID": 1,
+  "ProcesoID": 1,
+  "Proceso": {...},
+  "Incidente": "Error en la lectura de datos",
+  "Tipo": 1,
+  "Estado": 1,
+  "Detalles": [
+    {
+      "ID": 1,
+      "IncidenteID": 1,
+      "Detalle": "Se produjo un error al intentar leer el archivo de datos",
+      "FechaInicio": "2021-10-01T10:00:00Z",
+      "FechaFin": "2021-10-01T10:05:00Z"
+    },
+    {
+      "ID": 2,
+      "IncidenteID": 1,
+      "Detalle": "Se intentó nuevamente leer el archivo de datos y se logró con éxito",
+      "FechaInicio": "2021-10-01T10:05:00Z",
+      "FechaFin": "2021-10-01T10:10:00Z"
+    }
+  ]
+}
+```
+
 Además, la estructura cuenta con los siguientes métodos:
 
 ### GetAll
@@ -311,6 +316,19 @@ La estructura `IncidentesDetalle` representa un detalle relacionado con un incid
 - `Detalle`: descripción del detalle (puede ser nulo).
 - `FechaInicio`: fecha de inicio del detalle (puede ser nulo).
 - `FechaFin`: fecha de finalización del detalle (puede ser nulo).
+
+```json
+{
+    "id": 1,
+    "incidente_id": 1,
+    "detalle": "Error al procesar la factura",
+    "fecha_inicio": "2021-05-01T10:30:00Z",
+    "fecha_fin": "2021-05-01T11:00:00Z",
+    "created_at": "2021-05-01T12:00:00Z",
+    "updated_at": "2021-05-01T12:00:00Z",
+    "deleted_at": null
+}
+```
 
 Además, la estructura cuenta con los siguientes métodos:
 
@@ -350,6 +368,33 @@ La estructura `Usuario` representa un usuario del sistema y tiene los siguientes
 - `Roles`: lista de roles asignados al usuario.
 - `Procesos`: lista de procesos asignados al usuario.
 
+```json
+{
+    "ID": 1,
+    "Nombre": "Juan",
+    "Apellido": "Perez",
+    "Email": "juan.perez@example.com",
+    "Roles": [
+        {
+            "ID": 1,
+            "Nombre": "Administrador",
+            "Usuarios": [...]
+        }
+    ],
+    "Procesos": [
+        {
+            "ID": 1,
+            "Nombre": "Proceso de Ejemplo",
+            "Folderid": 123456,
+            "Organizacion": {...},
+            "IncidentesProceso": [...],
+            "Clientes": [...],
+            "Usuarios": [...]
+        }
+    ]
+}
+```
+
 Además, la estructura cuenta con los siguientes métodos:
 
 ### GetAll
@@ -383,6 +428,14 @@ La estructura `Rol` representa un rol del sistema y tiene los siguientes campos:
 - `ID`: identificador único del rol.
 - `Nombre`: nombre del rol (no puede ser nulo).
 - `Usuarios`: lista de usuarios asignados al rol.
+
+```json
+{
+  "ID": 1,
+  "Nombre": "Administrador",
+  "Usuarios": [...]
+}
+```
 
 Además, la estructura cuenta con los siguientes métodos:
 
