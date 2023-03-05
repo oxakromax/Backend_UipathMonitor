@@ -92,73 +92,6 @@ func (Organización) TableName() string {
 
 En este caso, devuelve la cadena `"organizaciones"`, que es el nombre de la tabla correspondiente en la base de datos.
 
-## Estructura: Cliente
-
-La estructura `Cliente` representa un cliente de una organización y tiene los siguientes campos:
-
-- `ID`: identificador único del cliente.
-- `Nombre`: nombre del cliente (no puede ser nulo).
-- `Apellido`: apellido del cliente (no puede ser nulo).
-- `Email`: dirección de correo electrónico del cliente (no puede ser nulo).
-- `OrganizacionID`: identificador único de la organización a la que pertenece el cliente (no puede ser nulo).
-- `Organizacion`: organización a la que pertenece el cliente.
-- `Procesos`: lista de procesos en los que participa el cliente.
-
-```json
-{
-  "ID": 1,
-  "Nombre": "John",
-  "Apellido": "Doe",
-  "Email": "johndoe@example.com",
-  "OrganizacionID": 1,
-  "Organizacion": {
-    "ID": 1,
-    "Nombre": "Mi Organizacion",
-    "Uipathname": "mi_organizacion",
-    "Tenantname": "mi_tenant",
-    "AppID": "app_id",
-    "AppSecret": "app_secret",
-    "Clientes": [...],
-    "Procesos": [...]
-  },
-  "Procesos": [...]
-}
-```
-
-Además, la estructura cuenta con los siguientes métodos:
-
-### GetAll
-
-```go
-func (Cliente) GetAll(db *gorm.DB) []*Cliente
-```
-
-Este método devuelve todos los clientes registrados en la base de datos, incluyendo la organización y los procesos a los que pertenecen.
-
-### Get
-
-```go
-func (this *Cliente) Get(db *gorm.DB, id uint)
-```
-
-Este método devuelve el cliente con el identificador `id`, incluyendo la organización y los procesos a los que pertenece.
-
-### GetByProcess
-
-```go
-func (Cliente) GetByProcess(db *gorm.DB, id uint) []*Cliente
-```
-
-Este método devuelve todos los clientes que participan en el proceso con el identificador `id`, incluyendo la organización a la que pertenecen y los demás procesos en los que participan.
-
-### Función TableName
-
-```go
-func (Cliente) TableName() string
-```
-
-Esta función devuelve el nombre de la tabla de la base de datos correspondiente a la estructura `Cliente`.
-
 ## Estructura Proceso
 
 La estructura `Proceso` representa un proceso de Uipath y tiene los siguientes campos:
@@ -177,26 +110,24 @@ La estructura `Proceso` representa un proceso de Uipath y tiene los siguientes c
 
 ```json
 {
-  "id": 1,
-  "nombre": "Proceso de ejemplo",
-  "folderid": 1234,
-  "warning_tolerance": 10,
-  "error_tolerance": 0,
-  "fatal_tolerance": 0,
-  "organizacion_id": 1,
-  "organizacion": {
-    "id": 1,
-    "nombre": "Organización de ejemplo",
-    "uipathname": "https://cloud.uipath.com/",
-    "tenantname": "tenant_name",
-    "app_id": "app_id_example",
-    "app_secret": "app_secret_example",
-    "clientes": [...],
-    "procesos": [...]
+  "ID": 1,
+  "Nombre": "Proceso de Ventas",
+  "Folderid": 1234,
+  "WarningTolerance": 10,
+  "ErrorTolerance": 0,
+  "FatalTolerance": 0,
+  "Organizacion": {
+    ...
   },
-  "incidentes_proceso": [...],
-  "clientes": [...],
-  "usuarios": [...]
+  "IncidentesProceso": [
+    ...
+  ],
+  "Clientes": [
+    ...
+  ],
+  "Usuarios": [
+    ...
+  ]
 }
 ```
 
@@ -419,7 +350,84 @@ Este método devuelve el usuario con el identificador `id`, incluyendo los roles
 func (Usuario) GetByProcess(db *gorm.DB, procesoID uint) []*Usuario
 ```
 
-Este método devuelve todos los usuarios asignados al proceso con el identificador `procesoID`, incluyendo los roles y procesos asignados.
+Este método devuelve todos los usuarios asignados al proceso con el identificador `procesoID`, incluyendo los roles y
+procesos asignados.
+
+## Estructura: Cliente
+
+La estructura `Cliente` representa un cliente de una organización y tiene los siguientes campos:
+
+- `ID`: identificador único del cliente.
+- `Nombre`: nombre del cliente (no puede ser nulo).
+- `Apellido`: apellido del cliente (no puede ser nulo).
+- `Email`: dirección de correo electrónico del cliente (no puede ser nulo).
+- `OrganizacionID`: identificador único de la organización a la que pertenece el cliente (no puede ser nulo).
+- `Organizacion`: organización a la que pertenece el cliente.
+- `Procesos`: lista de procesos en los que participa el cliente.
+
+```json
+{
+  "ID": 1,
+  "Nombre": "John",
+  "Apellido": "Doe",
+  "Email": "johndoe@example.com",
+  "OrganizacionID": 1,
+  "Organizacion": {
+    "ID": 1,
+    "Nombre": "Mi Organizacion",
+    "Uipathname": "mi_organizacion",
+    "Tenantname": "mi_tenant",
+    "AppID": "app_id",
+    "AppSecret": "app_secret",
+    "Clientes": [
+      ...
+    ],
+    "Procesos": [
+      ...
+    ]
+  },
+  "Procesos": [
+    ...
+  ]
+}
+```
+
+Además, la estructura cuenta con los siguientes métodos:
+
+### GetAll
+
+```go
+func (Cliente) GetAll(db *gorm.DB) []*Cliente
+```
+
+Este método devuelve todos los clientes registrados en la base de datos, incluyendo la organización y los procesos a los
+que pertenecen.
+
+### Get
+
+```go
+func (this *Cliente) Get(db *gorm.DB, id uint)
+```
+
+Este método devuelve el cliente con el identificador `id`, incluyendo la organización y los procesos a los que
+pertenece.
+
+### GetByProcess
+
+```go
+func (Cliente) GetByProcess(db *gorm.DB, id uint) []*Cliente
+```
+
+Este método devuelve todos los clientes que participan en el proceso con el identificador `id`, incluyendo la
+organización a la que pertenecen y los demás procesos en los que participan.
+
+### Función TableName
+
+```go
+func (Cliente) TableName() string
+```
+
+Esta función devuelve el nombre de la tabla de la base de datos correspondiente a la estructura `Cliente`.
 
 ## Estructura Rol
 
