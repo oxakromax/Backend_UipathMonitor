@@ -250,14 +250,11 @@ La estructura `IncidentesDetalle` representa un detalle relacionado con un incid
 
 ```json
 {
-    "id": 1,
-    "incidente_id": 1,
-    "detalle": "Error al procesar la factura",
-    "fecha_inicio": "2021-05-01T10:30:00Z",
-    "fecha_fin": "2021-05-01T11:00:00Z",
-    "created_at": "2021-05-01T12:00:00Z",
-    "updated_at": "2021-05-01T12:00:00Z",
-    "deleted_at": null
+  "ID": 1,
+  "IncidenteID": 1,
+  "Detalle": "Error en la lectura de archivo",
+  "FechaInicio": "2021-08-20T16:30:00Z",
+  "FechaFin": "2021-08-20T16:45:00Z"
 }
 ```
 
