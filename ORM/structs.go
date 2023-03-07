@@ -1,6 +1,7 @@
 package ORM
 
 import (
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 	"time"
 )
@@ -12,6 +13,7 @@ type Organizacion struct {
 	Tenantname string `gorm:"not null"`
 	AppID      string `gorm:"not null;default:''"`
 	AppSecret  string `gorm:"not null;default:''"`
+	AppScope   string `gorm:"not null;default:''"`
 	Clientes   []*Cliente
 	Procesos   []*Proceso
 }
@@ -179,6 +181,20 @@ type Usuario struct {
 	Password string     `gorm:"not null"`
 	Roles    []*Rol     `gorm:"many2many:usuarios_roles;"`
 	Procesos []*Proceso `gorm:"many2many:procesos_usuarios;"`
+}
+
+func (this *Usuario) SetPassword(password string) {
+	hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	this.Password = string(hash)
+}
+
+func (this *Usuario) CheckPassword(password string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(this.Password), []byte(password))
+	return err == nil
+}
+
+func (this *Usuario) GetByEmail(db *gorm.DB, email string) {
+	db.Preload("Roles").Preload("Procesos").Where("email = ?", email).First(&this)
 }
 
 func (Usuario) TableName() string {
