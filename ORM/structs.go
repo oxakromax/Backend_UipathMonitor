@@ -194,7 +194,7 @@ func (this *Usuario) CheckPassword(password string) bool {
 }
 
 func (this *Usuario) GetByEmail(db *gorm.DB, email string) {
-	db.Preload("Roles").Preload("Procesos").Where("email = ?", email).First(&this)
+	db.Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Where("email = ?", email).First(&this)
 }
 
 func (Usuario) TableName() string {
@@ -203,18 +203,24 @@ func (Usuario) TableName() string {
 
 func (Usuario) GetAll(db *gorm.DB) []*Usuario {
 	var usuarios []*Usuario
-	db.Preload("Roles").Preload("Procesos").Find(&usuarios)
+	db.Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Find(&usuarios)
 	return usuarios
 }
 
 func (this *Usuario) Get(db *gorm.DB, id uint) {
-	db.Preload("Roles").Preload("Procesos").First(&this, id)
+	db.Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").First(&this, id)
 }
 
 func (Usuario) GetByProcess(db *gorm.DB, procesoID uint) []*Usuario {
 	var usuarios []*Usuario
 	db.Preload("Roles").Preload("Procesos").Joins("JOIN procesos_usuarios ON procesos_usuarios.usuario_id = usuarios.id").Where("procesos_usuarios.proceso_id = ?", procesoID).Find(&usuarios)
 	return usuarios
+}
+
+func (this *Usuario) GetProcesos(db *gorm.DB) []*Proceso {
+	var procesos []*Proceso
+	db.Model(&this).Association("Procesos").Find(&procesos)
+	return procesos
 }
 
 type Rol struct {
@@ -249,14 +255,15 @@ type Route struct {
 	gorm.Model
 	Method string `gorm:"not null"`
 	Route  string `gorm:"not null"`
+	Roles  []*Rol `gorm:"many2many:roles_routes;"`
 }
 
 func (Route) GetAll(db *gorm.DB) []*Route {
 	var routes []*Route
-	db.Find(&routes)
+	db.Preload("Roles").Find(&routes)
 	return routes
 }
 
 func (this *Route) Get(db *gorm.DB, id uint) {
-	db.First(&this, id)
+	db.Preload("Roles").First(&this, id)
 }
