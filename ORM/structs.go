@@ -221,18 +221,42 @@ type Rol struct {
 	gorm.Model
 	Nombre   string     `gorm:"not null"`
 	Usuarios []*Usuario `gorm:"many2many:usuarios_roles;"`
+	Rutas    []*Route   `gorm:"many2many:roles_routes;"`
 }
 
 func (Rol) GetAll(db *gorm.DB) []*Rol {
 	var roles []*Rol
-	db.Preload("Usuarios").Find(&roles)
+	db.Preload("Rutas").Find(&roles)
 	return roles
 }
 
 func (this *Rol) Get(db *gorm.DB, id uint) {
-	db.Preload("Usuarios").First(&this, id)
+	db.Preload("Rutas").First(&this, id)
+}
+
+func (this *Rol) GetUsuarios(db *gorm.DB) {
+	err := db.Model(&this).Association("Usuarios").Find(&this.Usuarios)
+	if err != nil {
+		return
+	}
 }
 
 func (Rol) TableName() string {
 	return "roles"
+}
+
+type Route struct {
+	gorm.Model
+	Method string `gorm:"not null"`
+	Route  string `gorm:"not null"`
+}
+
+func (Route) GetAll(db *gorm.DB) []*Route {
+	var routes []*Route
+	db.Find(&routes)
+	return routes
+}
+
+func (this *Route) Get(db *gorm.DB, id uint) {
+	db.First(&this, id)
 }

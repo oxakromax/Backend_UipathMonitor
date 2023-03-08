@@ -14,7 +14,7 @@ type loginAuth struct {
 	username, password string
 }
 
-func LoginAuth(username, password string) smtp.Auth {
+func loginAuthFunct(username, password string) smtp.Auth {
 	return &loginAuth{username, password}
 }
 
@@ -70,7 +70,7 @@ func SendMail(body, subject string, to []string) error {
 		return err
 	}
 
-	auth := LoginAuth(from, password)
+	auth := loginAuthFunct(from, password)
 
 	if err = c.Auth(auth); err != nil {
 		return err
