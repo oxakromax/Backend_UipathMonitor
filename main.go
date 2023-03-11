@@ -1,14 +1,14 @@
 package main
 
 import (
-	"GormTest/ORM"
-	"GormTest/UipathAPI"
-	"GormTest/functions"
 	"fmt"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/oxakromax/Backend_UipathMonitor/ORM"
+	"github.com/oxakromax/Backend_UipathMonitor/UipathAPI"
+	"github.com/oxakromax/Backend_UipathMonitor/functions"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -201,6 +201,9 @@ func (H *Handler) RefreshDataBase(e *echo.Echo) {
 		_, err = functions.DecryptAES(H.DbKey, org.AppSecret)
 		if err != nil {
 			org.AppSecret, _ = functions.EncryptAES(H.DbKey, org.AppSecret)
+		}
+		if err == nil {
+			continue
 		}
 		H.Db.Save(&org)
 	}
@@ -541,5 +544,8 @@ func main() {
 	e.GET("/user-orgs", H.GetUserOrganizations)
 	H.RefreshDataBase(e)
 
-	_ = e.Start(":8080")
+	err := e.Start(":8080")
+	if err != nil {
+		fmt.Println(err)
+	}
 }

@@ -1,11 +1,11 @@
 package ORM
 
 import (
-	"GormTest/UipathAPI"
-	"GormTest/functions"
 	"encoding/json"
 	"errors"
 	"github.com/google/go-querystring/query"
+	"github.com/oxakromax/Backend_UipathMonitor/UipathAPI"
+	"github.com/oxakromax/Backend_UipathMonitor/functions"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 	"io"

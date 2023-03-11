@@ -1,4 +1,4 @@
-module GormTest
+module github.com/oxakromax/Backend_UipathMonitor
 
 go 1.20
 
