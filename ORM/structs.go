@@ -141,7 +141,7 @@ func (this *Organizacion) RequestAPI(method, path string, body io.Reader, conds 
 		}
 		return res, nil
 	}
-	return nil, errors.New("Error al obtener el token de UiPath")
+	return nil, errors.New("error al obtener el token de UiPath")
 }
 
 func (this *Organizacion) GetFromApi(structType interface{}, folderid ...int) error {
@@ -169,7 +169,7 @@ func (this *Organizacion) GetFromApi(structType interface{}, folderid ...int) er
 	case *UipathAPI.JobsResponse:
 		resp, err = this.RequestAPI("GET", "Jobs", nil, folderID)
 	default:
-		return errors.New("Tipo de estructura no soportada, debe ser un puntero a una de las siguientes estructuras: FoldersResponse, LogResponse, ReleasesResponse, JobsResponse")
+		return errors.New("tipo de estructura no soportada, debe ser un puntero a una de las siguientes estructuras: FoldersResponse, LogResponse, ReleasesResponse, JobsResponse")
 	}
 	if err != nil {
 		return err
@@ -190,7 +190,7 @@ func (this *Organizacion) CheckAccessAPI() error {
 	return err
 }
 
-func (Organizacion) GetAll(db *gorm.DB) []*Organizacion {
+func (this *Organizacion) GetAll(db *gorm.DB) []*Organizacion {
 	var organizaciones []*Organizacion
 	db.Preload("Procesos").Preload("Clientes").Preload("Usuarios").Find(&organizaciones)
 	return organizaciones
@@ -313,7 +313,7 @@ func (this *IncidenteProceso) GetByProceso(db *gorm.DB, procesoID uint) []*Incid
 	return incidentes
 }
 
-// IncidenteProcesos Tablename: incidentes_procesos
+// TableName TableName IncidenteProcesos Tablename: incidentes_procesos
 func (IncidenteProceso) TableName() string {
 	return "incidentes_procesos"
 }
@@ -342,7 +342,7 @@ func (IncidentesDetalle) GetByIncidente(db *gorm.DB, incidenteID int) []*Inciden
 	return detalles
 }
 
-// IncidentesDetalles Tablename: incidentes_detalle
+// TableName TableName IncidentesDetalles Tablename: incidentes_detalle
 func (IncidentesDetalle) TableName() string {
 	return "incidentes_detalle"
 }
@@ -400,7 +400,7 @@ func (Usuario) GetByProcess(db *gorm.DB, procesoID uint) []*Usuario {
 
 func (this *Usuario) GetProcesos(db *gorm.DB) []*Proceso {
 	var procesos []*Proceso
-	db.Model(&this).Association("Procesos").Find(&procesos)
+	_ = db.Model(&this).Association("Procesos").Find(&procesos)
 	return procesos
 }
 

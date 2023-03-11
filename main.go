@@ -55,14 +55,14 @@ type Handler struct {
 	DbKey           string
 }
 
-func (h *Handler) Login(c echo.Context) error {
+func (H *Handler) Login(c echo.Context) error {
 	email := c.FormValue("email")       // Obtener el valor del campo "email" del formulario de inicio de sesión
 	password := c.FormValue("password") // Obtener el valor del campo "password" del formulario de inicio de sesión
 	if email == "" || password == "" {  // Validar si los campos son nulos o vacíos
 		return c.JSON(http.StatusBadRequest, "Invalid email or password") // Devolver un error 400 de solicitud incorrecta con un mensaje de error
 	}
 	var user ORM.Usuario
-	user.GetByEmail(h.Db, email) // Buscar al usuario por su correo electrónico en la base de datos
+	user.GetByEmail(H.Db, email) // Buscar al usuario por su correo electrónico en la base de datos
 	if user.ID == 0 {            // Validar si el usuario no existe
 		return c.JSON(http.StatusNotFound, "User not found") // Devolver un error 404 de no encontrado con un mensaje de error
 	}
@@ -70,13 +70,13 @@ func (h *Handler) Login(c echo.Context) error {
 		return c.JSON(http.StatusUnauthorized, "Invalid email or password") // Devolver un error 401 de no autorizado con un mensaje de error
 	}
 	// Crear token
-	token := jwt.New(jwt.SigningMethodHS256)
+	token := jwt.New(jwt.SigningMethodHS512)
 	// Establecer los datos del token
 	claims := token.Claims.(jwt.MapClaims)
 	claims["id"] = user.ID                                // Establecer el ID del usuario como un campo en los datos del token
 	claims["exp"] = time.Now().Add(time.Hour * 72).Unix() // Establecer la fecha de vencimiento del token en 72 horas a partir de la hora actual
 	// Generar el token codificado y enviarlo como respuesta
-	t, err := token.SignedString([]byte(h.TokenKey))
+	t, err := token.SignedString([]byte(H.TokenKey))
 	if err != nil {
 		return err // Devolver cualquier error que ocurra al generar el token
 	}
@@ -84,13 +84,13 @@ func (h *Handler) Login(c echo.Context) error {
 		"token": t, // Devolver el token codificado como un campo en la respuesta JSON
 	})
 }
-func (h *Handler) ForgotPassword(c echo.Context) error {
+func (H *Handler) ForgotPassword(c echo.Context) error {
 	email := c.FormValue("email") // Obtener el valor del campo "email" del formulario de inicio de sesión
 	if email == "" {              // Validar si los campos son nulos o vacíos
 		return c.JSON(http.StatusBadRequest, "Invalid email") // Devolver un error 400 de solicitud incorrecta con un mensaje de error
 	}
 	var user ORM.Usuario
-	h.Db.Where("email = ?", email).First(&user) // Buscar al usuario por su correo electrónico en la base de datos
+	H.Db.Where("email = ?", email).First(&user) // Buscar al usuario por su correo electrónico en la base de datos
 	if user.ID == 0 {                           // Validar si el usuario no existe
 		return c.JSON(http.StatusNotFound, "User not found") // Devolver un error 404 de no encontrado con un mensaje de error
 	}
@@ -105,13 +105,13 @@ func (h *Handler) ForgotPassword(c echo.Context) error {
 	}
 	// Actualizar la contraseña del usuario en la base de datos
 	user.SetPassword(newPassword)
-	h.Db.Save(&user)
+	H.Db.Save(&user)
 	return c.JSON(http.StatusOK, "Password reset successfully")
 }
-func (h *Handler) checkRoleMiddleware() echo.MiddlewareFunc {
+func (H *Handler) checkRoleMiddleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			for _, route := range h.UniversalRoutes {
+			for _, route := range H.UniversalRoutes {
 				if strings.ToLower(route) == strings.ToLower(c.Path()) {
 					return next(c) // Permitir el acceso a la ruta
 				}
@@ -119,7 +119,7 @@ func (h *Handler) checkRoleMiddleware() echo.MiddlewareFunc {
 			// Verificar si el usuario está autenticado y tiene un rol permitido
 			id := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64)) // Extraer el ID del usuario del token JWT
 			User := ORM.Usuario{}
-			User.Get(h.Db, uint(id))              // Obtener el usuario de la base de datos
+			User.Get(H.Db, uint(id))              // Obtener el usuario de la base de datos
 			for _, UserRole := range User.Roles { // Iterar sobre los roles del usuario
 				for _, route := range UserRole.Rutas {
 					if strings.ToLower(route.Route) == strings.ToLower(c.Path()) && strings.ToLower(route.Method) == strings.ToLower(c.Request().Method) {
@@ -301,9 +301,18 @@ func (H *Handler) UpdateProfile(c echo.Context) error {
 	if User.ID == 0 {
 		return c.JSON(http.StatusNotFound, "User not found")
 	}
+	oldmail := User.Email
 	// Actualizar los datos del usuario
 	if err := c.Bind(&User); err != nil {
 		return c.JSON(http.StatusBadRequest, "Invalid data")
+	}
+	if oldmail != User.Email {
+		// Verificar si el email ya existe en la base de datos
+		checkUser := new(ORM.Usuario)
+		H.Db.Where("email = ?", User.Email).First(&checkUser)
+		if checkUser.ID != 0 {
+			return c.JSON(http.StatusConflict, "Email already exists")
+		}
 	}
 	// verifica si envio una nueva contraseña
 	if User.Password != "" {
@@ -498,7 +507,8 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(echojwt.WithConfig(echojwt.Config{
-		SigningKey: []byte(H.TokenKey),
+		SigningKey:    []byte(H.TokenKey),
+		SigningMethod: "HS512",
 		Skipper: func(c echo.Context) bool {
 			// Skip authentication for signup and login requests
 			for _, route := range H.UniversalRoutes {
