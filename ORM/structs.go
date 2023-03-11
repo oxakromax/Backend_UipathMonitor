@@ -1,10 +1,71 @@
 package ORM
 
 import (
+	"GormTest/UipathAPI"
+	"encoding/json"
+	"errors"
+	"github.com/google/go-querystring/query"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+	"io"
+	"net/http"
+	"strconv"
+	"strings"
+	"sync"
 	"time"
 )
+
+var (
+	UipathBearerTokenMap sync.Map // sync map because there's a lot of goroutines reading and writing to it
+)
+
+func (this *Organizacion) refreshUiPathToken() error {
+	const url = "https://cloud.uipath.com/identity_/connect/token"
+	const method = "POST"
+	var QueryAuth = struct {
+		GrantType    string `json:"grant_type" url:"grant_type"`
+		ClientId     string `json:"client_id" url:"client_id"`
+		ClientSecret string `json:"client_secret" url:"client_secret"`
+		Scope        string `json:"scope" url:"scope"`
+	}{
+		GrantType:    "client_credentials",
+		ClientId:     this.AppID,
+		ClientSecret: this.AppSecret,
+		Scope:        this.AppScope,
+	}
+	vals, err := query.Values(QueryAuth)
+	if err != nil {
+		return err
+	}
+	payload := strings.NewReader(vals.Encode())
+	client := new(http.Client)
+	req, err := http.NewRequest(method, url, payload)
+	if err != nil {
+		return err
+	}
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	res, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+	var UiPathToken struct {
+		AccessToken string `json:"access_token"`
+		ExpiresIn   int    `json:"expires_in"`
+		TokenType   string `json:"token_type"`
+		Scope       string `json:"scope"`
+	}
+	err = json.Unmarshal(body, &UiPathToken) // Refresh the token
+	if err != nil {
+		return err
+	}
+	UipathBearerTokenMap.Store(this.ID, UiPathToken)
+	return nil
+}
 
 type Organizacion struct {
 	gorm.Model
@@ -14,8 +75,108 @@ type Organizacion struct {
 	AppID      string `gorm:"not null;default:''"`
 	AppSecret  string `gorm:"not null;default:''"`
 	AppScope   string `gorm:"not null;default:''"`
+	BaseURL    string `gorm:"not null;default:'https://cloud.uipath.com/'"`
 	Clientes   []*Cliente
 	Procesos   []*Proceso
+}
+
+func (this *Organizacion) GetUrl() string {
+	return this.BaseURL + this.Uipathname + "/" + this.Tenantname + "/orchestrator_/odata/"
+}
+
+func (this *Organizacion) RequestAPI(method, path string, body io.Reader, conds ...interface{}) (*http.Response, error) {
+	// Examples:
+	//res, err := RequestAPI("GET", "/releases", nil, "application/xml") // contentType será "application/xml" y folderID será 0
+	//res, err := RequestAPI("GET", "/releases", nil, 1234) // contentType será "application/json" y folderID será 1234
+	//res, err := RequestAPI("GET", "/releases", nil, 1234, "application/xml") // contentType será "application/xml" y folderID será 1234
+
+	// if there's no folder, then folderID = 0
+	// Possible Paths:
+	// Releases
+	// Folders
+	// Jobs
+	// RobotLogs
+	for i := 0; i < 2; i++ { // Try twice, in case the token is expired
+		client := new(http.Client)
+		req, err := http.NewRequest(method, this.GetUrl()+path, body)
+		if err != nil {
+			return nil, err
+		}
+		var UipathBearerToken string
+		if val, ok := UipathBearerTokenMap.Load(this.ID); ok {
+			UipathBearerToken = val.(string)
+		} else {
+			UipathBearerToken = ""
+		}
+		req.Header.Add("Authorization", "Bearer "+UipathBearerToken)
+		contentType := "application/json"
+		for _, cond := range conds {
+			if cont, ok := cond.(string); ok {
+				contentType = cont
+			}
+		}
+		req.Header.Add("Content-Type", contentType)
+		for _, cond := range conds {
+			if folderID, ok := cond.(int); ok {
+				req.Header.Add("X-UIPATH-OrganizationUnitId", strconv.Itoa(folderID))
+			}
+		}
+		res, err := client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		if res.StatusCode == 401 { // Unauthorized
+			err = this.refreshUiPathToken()
+			if err != nil {
+				return nil, err
+			}
+			continue
+		}
+		return res, nil
+	}
+	return nil, errors.New("Error al obtener el token de UiPath")
+}
+
+func (this *Organizacion) GetFromApi(structType interface{}, folderid ...int) error {
+	// Possible Paths:
+	// Releases
+	// Folders
+	// Jobs
+	// RobotLogs
+
+	var resp *http.Response
+	var err error
+	var folderID int
+	if len(folderid) > 0 {
+		folderID = folderid[0]
+	} else {
+		folderID = 0
+	}
+	switch structType.(type) {
+	case UipathAPI.FoldersResponse:
+		resp, err = this.RequestAPI("GET", "Folders", nil)
+	case UipathAPI.LogResponse:
+		resp, err = this.RequestAPI("GET", "RobotLogs", nil, folderID)
+	case UipathAPI.ReleasesResponse:
+		resp, err = this.RequestAPI("GET", "Releases", nil, folderID)
+	case UipathAPI.JobsResponse:
+		resp, err = this.RequestAPI("GET", "Jobs", nil, folderID)
+	default:
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(body, &structType)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (Organizacion) GetAll(db *gorm.DB) []*Organizacion {
@@ -65,7 +226,9 @@ func (Cliente) GetByProcess(db *gorm.DB, id uint) []*Cliente {
 type Proceso struct {
 	gorm.Model
 	Nombre            string              `gorm:"not null"`
+	Alias             string              `gorm:"not null,default:''"`
 	Folderid          uint                `gorm:"not null"`
+	Foldername        string              `gorm:"not null,default:''"`
 	OrganizacionID    uint                `gorm:"not null"`
 	WarningTolerance  int                 `gorm:"not null;default:10"`
 	ErrorTolerance    int                 `gorm:"not null;default:0"`
