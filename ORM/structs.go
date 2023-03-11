@@ -2,6 +2,7 @@ package ORM
 
 import (
 	"GormTest/UipathAPI"
+	"GormTest/functions"
 	"encoding/json"
 	"errors"
 	"github.com/google/go-querystring/query"
@@ -9,6 +10,7 @@ import (
 	"gorm.io/gorm"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -19,9 +21,11 @@ var (
 	UipathBearerTokenMap sync.Map // sync map because there's a lot of goroutines reading and writing to it
 )
 
-func (this *Organizacion) refreshUiPathToken() error {
+func (this *Organizacion) RefreshUiPathToken() error {
 	const url = "https://cloud.uipath.com/identity_/connect/token"
 	const method = "POST"
+	ClientID, _ := functions.DecryptAES(os.Getenv("DB_KEY"), this.AppID)
+	ClientSecret, _ := functions.DecryptAES(os.Getenv("DB_KEY"), this.AppSecret)
 	var QueryAuth = struct {
 		GrantType    string `json:"grant_type" url:"grant_type"`
 		ClientId     string `json:"client_id" url:"client_id"`
@@ -29,8 +33,8 @@ func (this *Organizacion) refreshUiPathToken() error {
 		Scope        string `json:"scope" url:"scope"`
 	}{
 		GrantType:    "client_credentials",
-		ClientId:     this.AppID,
-		ClientSecret: this.AppSecret,
+		ClientId:     ClientID,
+		ClientSecret: ClientSecret,
 		Scope:        this.AppScope,
 	}
 	vals, err := query.Values(QueryAuth)
@@ -48,7 +52,9 @@ func (this *Organizacion) refreshUiPathToken() error {
 	if err != nil {
 		return err
 	}
-	defer res.Body.Close()
+	if res.StatusCode != 200 {
+		return errors.New("Error refreshing UiPath token: " + res.Status)
+	}
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return err
@@ -63,8 +69,8 @@ func (this *Organizacion) refreshUiPathToken() error {
 	if err != nil {
 		return err
 	}
-	UipathBearerTokenMap.Store(this.ID, UiPathToken)
-	return nil
+	UipathBearerTokenMap.Store(this.ID, UiPathToken.AccessToken)
+	return res.Body.Close()
 }
 
 type Organizacion struct {
@@ -78,6 +84,7 @@ type Organizacion struct {
 	BaseURL    string `gorm:"not null;default:'https://cloud.uipath.com/'"`
 	Clientes   []*Cliente
 	Procesos   []*Proceso
+	Usuarios   []*Usuario `gorm:"many2many:usuarios_organizaciones;"`
 }
 
 func (this *Organizacion) GetUrl() string {
@@ -126,7 +133,7 @@ func (this *Organizacion) RequestAPI(method, path string, body io.Reader, conds 
 			return nil, err
 		}
 		if res.StatusCode == 401 { // Unauthorized
-			err = this.refreshUiPathToken()
+			err = this.RefreshUiPathToken()
 			if err != nil {
 				return nil, err
 			}
@@ -153,40 +160,44 @@ func (this *Organizacion) GetFromApi(structType interface{}, folderid ...int) er
 		folderID = 0
 	}
 	switch structType.(type) {
-	case UipathAPI.FoldersResponse:
+	case *UipathAPI.FoldersResponse:
 		resp, err = this.RequestAPI("GET", "Folders", nil)
-	case UipathAPI.LogResponse:
+	case *UipathAPI.LogResponse:
 		resp, err = this.RequestAPI("GET", "RobotLogs", nil, folderID)
-	case UipathAPI.ReleasesResponse:
+	case *UipathAPI.ReleasesResponse:
 		resp, err = this.RequestAPI("GET", "Releases", nil, folderID)
-	case UipathAPI.JobsResponse:
+	case *UipathAPI.JobsResponse:
 		resp, err = this.RequestAPI("GET", "Jobs", nil, folderID)
 	default:
-		return err
+		return errors.New("Tipo de estructura no soportada, debe ser un puntero a una de las siguientes estructuras: FoldersResponse, LogResponse, ReleasesResponse, JobsResponse")
 	}
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
-	err = json.Unmarshal(body, &structType)
+	err = json.Unmarshal(body, structType)
 	if err != nil {
 		return err
 	}
-	return nil
+	return resp.Body.Close() // last possible error
+}
+
+func (this *Organizacion) CheckAccessAPI() error {
+	_, err := this.RequestAPI("GET", "Folders", nil)
+	return err
 }
 
 func (Organizacion) GetAll(db *gorm.DB) []*Organizacion {
 	var organizaciones []*Organizacion
-	db.Preload("Procesos").Preload("Clientes").Find(&organizaciones)
+	db.Preload("Procesos").Preload("Clientes").Preload("Usuarios").Find(&organizaciones)
 	return organizaciones
 }
 
 func (this *Organizacion) Get(db *gorm.DB, id uint) {
-	db.Preload("Procesos").Preload("Clientes").First(&this, id)
+	db.Preload("Procesos").Preload("Clientes").Preload("Usuarios").First(&this, id)
 }
 
 func (Organizacion) TableName() string {
@@ -338,12 +349,19 @@ func (IncidentesDetalle) TableName() string {
 
 type Usuario struct {
 	gorm.Model
-	Nombre   string     `gorm:"not null"`
-	Apellido string     `gorm:"not null"`
-	Email    string     `gorm:"not null"`
-	Password string     `gorm:"not null"`
-	Roles    []*Rol     `gorm:"many2many:usuarios_roles;"`
-	Procesos []*Proceso `gorm:"many2many:procesos_usuarios;"`
+	Nombre         string          `gorm:"not null"`
+	Apellido       string          `gorm:"not null"`
+	Email          string          `gorm:"not null"`
+	Password       string          `gorm:"not null"`
+	Roles          []*Rol          `gorm:"many2many:usuarios_roles;"`
+	Procesos       []*Proceso      `gorm:"many2many:procesos_usuarios;"`
+	Organizaciones []*Organizacion `gorm:"many2many:usuarios_organizaciones;"`
+}
+
+func (this *Usuario) GetAdmins(db *gorm.DB) []*Usuario {
+	var usuarios []*Usuario
+	db.Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Where("roles.Nombre = ?", "admin").Find(&usuarios)
+	return usuarios
 }
 
 func (this *Usuario) SetPassword(password string) {

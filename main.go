@@ -2,7 +2,9 @@ package main
 
 import (
 	"GormTest/ORM"
+	"GormTest/UipathAPI"
 	"GormTest/functions"
+	"fmt"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
@@ -13,17 +15,18 @@ import (
 	"gorm.io/gorm/logger"
 	"math/rand"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 )
 
 func generatePassword(length int) string {
-	rand.Seed(time.Now().UnixNano())
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+{}[];:,./<>?"
 	result := make([]byte, length)
 	for i := 0; i < length; i++ {
-		result[i] = letters[rand.Intn(len(letters))]
+		result[i] = letters[r.Intn(len(letters))]
 	}
 	return string(result)
 }
@@ -33,7 +36,7 @@ func OpenDB() *gorm.DB {
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: log,
 	})
-	log.Info(nil, "Database connection successfully opened")
+	db.Logger.Info(nil, "Database connection successfully opened")
 	if err != nil {
 		panic("failed to connect database")
 	}
@@ -47,8 +50,9 @@ func OpenDB() *gorm.DB {
 
 type Handler struct {
 	Db              *gorm.DB
-	Key             string
+	TokenKey        string
 	UniversalRoutes []string
+	DbKey           string
 }
 
 func (h *Handler) Login(c echo.Context) error {
@@ -65,7 +69,6 @@ func (h *Handler) Login(c echo.Context) error {
 	if !user.CheckPassword(password) { // Validar si la contraseña es incorrecta
 		return c.JSON(http.StatusUnauthorized, "Invalid email or password") // Devolver un error 401 de no autorizado con un mensaje de error
 	}
-	echojwt.JWT(h.Key) // Configurar la clave JWT globalmente
 	// Crear token
 	token := jwt.New(jwt.SigningMethodHS256)
 	// Establecer los datos del token
@@ -73,7 +76,7 @@ func (h *Handler) Login(c echo.Context) error {
 	claims["id"] = user.ID                                // Establecer el ID del usuario como un campo en los datos del token
 	claims["exp"] = time.Now().Add(time.Hour * 72).Unix() // Establecer la fecha de vencimiento del token en 72 horas a partir de la hora actual
 	// Generar el token codificado y enviarlo como respuesta
-	t, err := token.SignedString([]byte(h.Key))
+	t, err := token.SignedString([]byte(h.TokenKey))
 	if err != nil {
 		return err // Devolver cualquier error que ocurra al generar el token
 	}
@@ -188,6 +191,19 @@ func (H *Handler) RefreshDataBase(e *echo.Echo) {
 	// Reemplazar los roles del usuario administrador con el rol de administrador
 	AdminUser.SetPassword("test")
 	H.Db.Save(&AdminUser)
+	// Encriptar datos sensibles de las organizaciones
+	orgs := new(ORM.Organizacion).GetAll(H.Db)
+	for _, org := range orgs {
+		_, err := functions.DecryptAES(H.DbKey, org.AppID)
+		if err != nil {
+			org.AppID, _ = functions.EncryptAES(H.DbKey, org.AppID)
+		}
+		_, err = functions.DecryptAES(H.DbKey, org.AppSecret)
+		if err != nil {
+			org.AppSecret, _ = functions.EncryptAES(H.DbKey, org.AppSecret)
+		}
+		H.Db.Save(&org)
+	}
 }
 func (H *Handler) GetUsers(c echo.Context) error {
 	// if query id is not empty, return the user with that id
@@ -281,7 +297,7 @@ func (H *Handler) UpdateProfile(c echo.Context) error {
 	id := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
 	// Obtener el usuario de la base de datos
 	User := new(ORM.Usuario)
-	User.Get(H.Db, uint(id))
+	H.Db.First(&User, id)
 	if User.ID == 0 {
 		return c.JSON(http.StatusNotFound, "User not found")
 	}
@@ -304,18 +320,185 @@ func (H *Handler) UpdateProfile(c echo.Context) error {
 	User.Password = ""
 	return c.JSON(http.StatusOK, User)
 }
+func (H *Handler) CreateOrganization(c echo.Context) error {
+	// Obtener la organización de la solicitud
+	Organization := new(ORM.Organizacion)
+	if err := c.Bind(Organization); err != nil {
+		return c.JSON(http.StatusBadRequest, "Invalid request")
+	}
+	// Verificar si la organización ya existe en la base de datos
+	checkOrganization := new(ORM.Organizacion)
+	H.Db.Where("uipathname = ? and tenantname = ?", Organization.Uipathname, Organization.Tenantname).First(&checkOrganization)
+	if checkOrganization.ID != 0 {
+		return c.JSON(http.StatusConflict, "Organization already exists")
+	}
+
+	// Cifrar datos sensibles app_id y app_secret
+	Organization.AppID, _ = functions.EncryptAES(H.DbKey, Organization.AppID)
+	Organization.AppSecret, _ = functions.EncryptAES(H.DbKey, Organization.AppSecret)
+	// Verificar que los datos son correctos
+	err := Organization.CheckAccessAPI()
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, "Please check UiPath credentials")
+	}
+	// Guardar la organización en la base de datos
+	H.Db.Create(&Organization)
+	// Agregar a cada Administrador de la organización
+	Admins := new(ORM.Usuario).GetAdmins(H.Db)
+	for _, admin := range Admins {
+		_ = H.Db.Model(&Organization).Association("Usuarios").Append(admin)
+	}
+	JsonFolders := new(UipathAPI.FoldersResponse)
+	err = Organization.GetFromApi(JsonFolders)
+	if err != nil {
+		for _, Folder := range JsonFolders.Value {
+			IDFolder := Folder.Id
+			JsonProcesses := new(UipathAPI.ReleasesResponse)
+			err = Organization.GetFromApi(JsonProcesses, IDFolder)
+			if err != nil {
+				for _, Process := range JsonProcesses.Value {
+					// Obtener el proceso de la base de datos
+					ProcessDB := ORM.Proceso{
+						Nombre:           Process.Name,
+						Alias:            "",
+						Folderid:         uint(IDFolder),
+						Foldername:       Folder.DisplayName,
+						OrganizacionID:   Organization.ID,
+						WarningTolerance: 999, // 999 = no limit
+						ErrorTolerance:   999, // 999 = no limit
+						FatalTolerance:   999, // 999 = no limit
+					}
+					// Guardar el proceso en la base de datos
+					H.Db.Create(&ProcessDB)
+				}
+			}
+
+		}
+	}
+	return c.JSON(http.StatusOK, Organization)
+}
+func (H *Handler) GetUserOrganizations(c echo.Context) error {
+	// Obtener el ID del usuario del token JWT
+	id := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
+	// Obtener el usuario de la base de datos
+	User := new(ORM.Usuario)
+	User.Get(H.Db, uint(id))
+	if User.ID == 0 {
+		return c.JSON(http.StatusNotFound, "User not found")
+	}
+	// Obtener las organizaciones del usuario
+	var Organizations []*ORM.Organizacion
+	_ = H.Db.Model(&User).Association("Organizaciones").Find(&Organizations)
+	if Organizations == nil || len(Organizations) == 0 {
+		return c.JSON(http.StatusNotFound, "Organizations not found")
+	}
+	return c.JSON(http.StatusOK, Organizations)
+}
+func (H *Handler) GetOrganizations(c echo.Context) error {
+	Organization := new(ORM.Organizacion)
+	if c.QueryParam("id") != "" {
+		// Obtener ID de la organización de la solicitud
+		organizationID, err := strconv.Atoi(c.QueryParam("id"))
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, "Invalid organization ID")
+		}
+		// Obtener la organización de la base de datos
+		Organization.Get(H.Db, uint(organizationID))
+		if Organization.ID == 0 {
+			return c.JSON(http.StatusNotFound, "Organization not found")
+		}
+		for _, usuario := range Organization.Usuarios {
+			usuario.Password = ""
+		}
+		return c.JSON(http.StatusOK, Organization)
+	}
+	// Obtener las organizaciones de la base de datos
+	AllOrgs := Organization.GetAll(H.Db)
+	if AllOrgs == nil || len(AllOrgs) == 0 {
+		return c.JSON(http.StatusNotFound, "Organizations not found")
+	}
+	for _, org := range AllOrgs {
+		for _, usuario := range org.Usuarios {
+			usuario.Password = ""
+		}
+	}
+	return c.JSON(http.StatusOK, AllOrgs)
+
+}
+func (H *Handler) UpdateOrganization(c echo.Context) error {
+	// Obtener ID de la organización de la solicitud
+	organizationID, err := strconv.Atoi(c.QueryParam("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, "Invalid organization ID")
+	}
+	// Obtener la organización de la base de datos
+	Organization := new(ORM.Organizacion)
+	Organization.Get(H.Db, uint(organizationID))
+	if Organization.ID == 0 {
+		return c.JSON(http.StatusNotFound, "Organization not found")
+	}
+	// Actualizar los datos de la organización
+	if err := c.Bind(&Organization); err != nil {
+		return c.JSON(http.StatusBadRequest, "Invalid data")
+	}
+	_, errDecryption1 := functions.DecryptAES(H.DbKey, Organization.AppID) // Verificar si los datos ya están cifrados
+	_, errDecryption2 := functions.DecryptAES(H.DbKey, Organization.AppSecret)
+	if errDecryption1 != nil || errDecryption2 != nil { // Si no estaban cifrados, significa que se actualizaron
+		Organization.AppID, _ = functions.EncryptAES(H.DbKey, Organization.AppID) // Se encriptan primero
+		Organization.AppSecret, _ = functions.EncryptAES(H.DbKey, Organization.AppSecret)
+	}
+	err = Organization.CheckAccessAPI()
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, "Please check UiPath Data")
+	}
+
+	// Guardar los datos actualizados de la organización en la base de datos
+	H.Db.Updates(&Organization)
+	return c.JSON(http.StatusOK, Organization)
+}
+func (H *Handler) DeleteOrganization(c echo.Context) error {
+	// Obtener ID de la organización de la solicitud
+	organizationID, err := strconv.Atoi(c.QueryParam("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, "Invalid organization ID")
+	}
+	// Obtener la organización de la base de datos
+	Organization := new(ORM.Organizacion)
+	Organization.Get(H.Db, uint(organizationID))
+	if Organization.ID == 0 {
+		return c.JSON(http.StatusNotFound, "Organization not found")
+	}
+	// Eliminar la organización de la base de datos
+	H.Db.Delete(&Organization)
+	// Eliminar Procesos de la organización
+	for _, proceso := range Organization.Procesos {
+		H.Db.Delete(&proceso)
+	}
+	// Eliminar Clientes de la organización
+	for _, cliente := range Organization.Clientes {
+		H.Db.Delete(&cliente)
+	}
+	return c.JSON(http.StatusOK, "Organization deleted successfully")
+}
 
 func main() {
 	e := echo.New()
 	H := &Handler{
 		Db:              OpenDB(),
-		Key:             generatePassword(32),
+		TokenKey:        generatePassword(32),
 		UniversalRoutes: []string{"/auth", "/forgot"},
+		DbKey:           os.Getenv("DB_KEY"),
+	}
+	if H.DbKey == "" {
+		fmt.Println("DB_KEY environment variable not set")
+		NewKey, _ := functions.GenerateAESKey()
+		fmt.Println("Generated key: " + NewKey)
+		return
 	}
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(echojwt.WithConfig(echojwt.Config{
-		SigningKey: []byte(H.Key),
+		SigningKey: []byte(H.TokenKey),
 		Skipper: func(c echo.Context) bool {
 			// Skip authentication for signup and login requests
 			for _, route := range H.UniversalRoutes {
@@ -341,7 +524,11 @@ func main() {
 
 	e.GET("/profile", H.GetProfile)
 	e.PUT("/profile", H.UpdateProfile)
-
+	e.POST("/organization", H.CreateOrganization)
+	e.PUT("/organization", H.UpdateOrganization)
+	e.DELETE("/organization", H.DeleteOrganization)
+	e.GET("/organization", H.GetOrganizations)
+	e.GET("/user-orgs", H.GetUserOrganizations)
 	H.RefreshDataBase(e)
 
 	_ = e.Start(":8080")
