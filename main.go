@@ -6,6 +6,7 @@ import (
 	"github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/localtunnel/go-localtunnel"
 	"github.com/oxakromax/Backend_UipathMonitor/ORM"
 	"github.com/oxakromax/Backend_UipathMonitor/UipathAPI"
 	"github.com/oxakromax/Backend_UipathMonitor/functions"
@@ -282,6 +283,35 @@ func (H *Handler) CreateUser(c echo.Context) error {
 	User.Password = ""
 	return c.JSON(http.StatusOK, User)
 }
+func (H *Handler) UpdateUser(c echo.Context) error {
+	// Obtener ID desde query
+	id := c.QueryParam("id")
+	// Convertir el ID de la consulta en un número entero
+	ID, err := strconv.Atoi(id)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, "Invalid ID")
+	}
+	// Obtener el usuario de la base de datos
+	User := new(ORM.Usuario)
+	User.Get(H.Db, uint(ID))
+	if User.ID == 0 {
+		return c.JSON(http.StatusNotFound, "User not found")
+	}
+	// Obtener el usuario de la solicitud
+	if err := c.Bind(User); err != nil {
+		return c.JSON(http.StatusBadRequest, "Invalid request")
+	}
+	// Sobre escribir roles del usuario
+	err = H.Db.Model(&User).Association("Roles").Replace(User.Roles)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, "Error while updating user")
+	}
+	// Guardar el usuario en la base de datos
+	H.Db.Save(&User)
+	// Ocultar la contraseña del usuario
+	User.Password = ""
+	return c.JSON(http.StatusOK, User)
+}
 func (H *Handler) GetProfile(c echo.Context) error {
 	// Obtener el ID del usuario del token JWT
 	id := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
@@ -534,7 +564,7 @@ func main() {
 	e.GET("/users", H.GetUsers)
 	e.DELETE("/users", H.DeleteUser)
 	e.POST("/users", H.CreateUser)
-
+	e.PUT("/users", H.UpdateUser)
 	e.GET("/profile", H.GetProfile)
 	e.PUT("/profile", H.UpdateProfile)
 	e.POST("/organization", H.CreateOrganization)
@@ -543,8 +573,16 @@ func main() {
 	e.GET("/organization", H.GetOrganizations)
 	e.GET("/user-orgs", H.GetUserOrganizations)
 	H.RefreshDataBase(e)
-
-	err := e.Start(":8080")
+	listener, err := localtunnel.Listen(localtunnel.Options{
+		Subdomain: "golanguipathmonitortunnel",
+	})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("Tunnel URL: " + listener.URL())
+	e.Listener = listener
+	err = e.Start(":8080")
 	if err != nil {
 		fmt.Println(err)
 	}
