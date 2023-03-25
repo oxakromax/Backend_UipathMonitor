@@ -50,10 +50,11 @@ func OpenDB() *gorm.DB {
 }
 
 type Handler struct {
-	Db              *gorm.DB
-	TokenKey        string
-	UniversalRoutes []string
-	DbKey           string
+	Db                  *gorm.DB
+	TokenKey            string
+	UniversalRoutes     []string
+	UserUniversalRoutes []string
+	DbKey               string
 }
 
 func (H *Handler) Login(c echo.Context) error {
@@ -119,6 +120,11 @@ func (H *Handler) checkRoleMiddleware() echo.MiddlewareFunc {
 			}
 			// Verificar si el usuario está autenticado y tiene un rol permitido
 			id := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64)) // Extraer el ID del usuario del token JWT
+			for _, route := range H.UserUniversalRoutes {
+				if strings.ToLower(route) == strings.ToLower(c.Path()) {
+					return next(c) // Permitir el acceso a la ruta
+				}
+			}
 			User := ORM.Usuario{}
 			User.Get(H.Db, uint(id))              // Obtener el usuario de la base de datos
 			for _, UserRole := range User.Roles { // Iterar sobre los roles del usuario
@@ -322,7 +328,14 @@ func (H *Handler) GetProfile(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, "User not found")
 	}
 	// Ocultar la contraseña del usuario
+	User.GetComplete(H.Db)
 	User.Password = ""
+	for _, organization := range User.Organizaciones {
+		organization.AppID = ""
+		organization.AppSecret = ""
+		organization.AppScope = ""
+		organization.BaseURL = ""
+	}
 	return c.JSON(http.StatusOK, User)
 }
 func (H *Handler) UpdateProfile(c echo.Context) error {
@@ -434,6 +447,12 @@ func (H *Handler) GetUserOrganizations(c echo.Context) error {
 	if Organizations == nil || len(Organizations) == 0 {
 		return c.JSON(http.StatusNotFound, "Organizations not found")
 	}
+	for _, organization := range Organizations {
+		organization.AppID = ""
+		organization.AppSecret = ""
+		organization.AppScope = ""
+		organization.BaseURL = ""
+	}
 	return c.JSON(http.StatusOK, Organizations)
 }
 func (H *Handler) GetOrganizations(c echo.Context) error {
@@ -526,10 +545,11 @@ func (H *Handler) DeleteOrganization(c echo.Context) error {
 func main() {
 	e := echo.New()
 	H := &Handler{
-		Db:              OpenDB(),
-		TokenKey:        generatePassword(32),
-		UniversalRoutes: []string{"/auth", "/forgot"},
-		DbKey:           os.Getenv("DB_KEY"),
+		Db:                  OpenDB(),
+		TokenKey:            generatePassword(32),
+		UniversalRoutes:     []string{"/auth", "/forgot"},
+		UserUniversalRoutes: []string{"/profile"},
+		DbKey:               os.Getenv("DB_KEY"),
 	}
 	if H.DbKey == "" {
 		fmt.Println("DB_KEY environment variable not set")
@@ -573,6 +593,7 @@ func main() {
 	e.GET("/organization", H.GetOrganizations)
 	e.GET("/user-orgs", H.GetUserOrganizations)
 	H.RefreshDataBase(e)
+	var err error
 	listener, err := localtunnel.Listen(localtunnel.Options{
 		Subdomain: "golanguipathmonitortunnel",
 	})

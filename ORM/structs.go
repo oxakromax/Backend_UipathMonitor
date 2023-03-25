@@ -384,12 +384,16 @@ func (Usuario) TableName() string {
 
 func (Usuario) GetAll(db *gorm.DB) []*Usuario {
 	var usuarios []*Usuario
-	db.Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Find(&usuarios)
+	db.Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Preload("Organizaciones").Find(&usuarios)
 	return usuarios
 }
 
 func (this *Usuario) Get(db *gorm.DB, id uint) {
-	db.Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").First(&this, id)
+	db.Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Preload("Organizaciones").First(&this, id)
+}
+
+func (this *Usuario) GetComplete(db *gorm.DB) {
+	db.Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Preload("Organizaciones").Preload("Organizaciones.Procesos").First(&this, this.ID)
 }
 
 func (Usuario) GetByProcess(db *gorm.DB, procesoID uint) []*Usuario {
