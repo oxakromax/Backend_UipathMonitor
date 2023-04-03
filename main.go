@@ -17,6 +17,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -32,7 +33,7 @@ func generatePassword(length int) string {
 	return string(result)
 }
 func OpenDB() *gorm.DB {
-	dsn := "host=localhost user=postgres password=postgres dbname=Proyecto port=5432 sslmode=disable"
+	dsn := "host=localhost user=postgres password=Nh52895390 dbname=Proyecto port=5432 sslmode=disable"
 	log := logger.Default.LogMode(logger.Info)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: log,
@@ -348,9 +349,21 @@ func (H *Handler) UpdateProfile(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, "User not found")
 	}
 	oldmail := User.Email
-	// Actualizar los datos del usuario
-	if err := c.Bind(&User); err != nil {
-		return c.JSON(http.StatusBadRequest, "Invalid data")
+	newMail := c.FormValue("email")
+	if newMail != "" {
+		User.Email = newMail
+	}
+	newName := c.FormValue("name")
+	if newName != "" {
+		User.Nombre = newName
+	}
+	newLastName := c.FormValue("lastName")
+	if newLastName != "" {
+		User.Apellido = newLastName
+	}
+	newPassword := c.FormValue("password")
+	if newPassword != "" {
+		User.SetPassword(newPassword)
 	}
 	if oldmail != User.Email {
 		// Verificar si el email ya existe en la base de datos
@@ -359,15 +372,6 @@ func (H *Handler) UpdateProfile(c echo.Context) error {
 		if checkUser.ID != 0 {
 			return c.JSON(http.StatusConflict, "Email already exists")
 		}
-	}
-	// verifica si envio una nueva contraseña
-	if User.Password != "" {
-		// Encriptar la contraseña del usuario
-		hash, err := bcrypt.GenerateFromPassword([]byte(User.Password), bcrypt.DefaultCost)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, "Error while encrypting password")
-		}
-		User.Password = string(hash)
 	}
 	// Guardar los datos actualizados del usuario en la base de datos
 	H.Db.Updates(&User)
@@ -431,29 +435,6 @@ func (H *Handler) CreateOrganization(c echo.Context) error {
 		}
 	}
 	return c.JSON(http.StatusOK, Organization)
-}
-func (H *Handler) GetUserOrganizations(c echo.Context) error {
-	// Obtener el ID del usuario del token JWT
-	id := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
-	// Obtener el usuario de la base de datos
-	User := new(ORM.Usuario)
-	User.Get(H.Db, uint(id))
-	if User.ID == 0 {
-		return c.JSON(http.StatusNotFound, "User not found")
-	}
-	// Obtener las organizaciones del usuario
-	var Organizations []*ORM.Organizacion
-	_ = H.Db.Model(&User).Association("Organizaciones").Find(&Organizations)
-	if Organizations == nil || len(Organizations) == 0 {
-		return c.JSON(http.StatusNotFound, "Organizations not found")
-	}
-	for _, organization := range Organizations {
-		organization.AppID = ""
-		organization.AppSecret = ""
-		organization.AppScope = ""
-		organization.BaseURL = ""
-	}
-	return c.JSON(http.StatusOK, Organizations)
 }
 func (H *Handler) GetOrganizations(c echo.Context) error {
 	Organization := new(ORM.Organizacion)
@@ -541,6 +522,186 @@ func (H *Handler) DeleteOrganization(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, "Organization deleted successfully")
 }
+func (H *Handler) GetUserOrganizations(c echo.Context) error {
+	// Obtener el ID del usuario del token JWT
+	id := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
+	// Obtener el usuario de la base de datos
+	User := new(ORM.Usuario)
+	User.Get(H.Db, uint(id))
+	if User.ID == 0 {
+		return c.JSON(http.StatusNotFound, "User not found")
+	}
+	// Obtener las organizaciones del usuario
+	var Organizations []*ORM.Organizacion
+	_ = H.Db.Model(&User).Association("Organizaciones").Find(&Organizations)
+	if Organizations == nil || len(Organizations) == 0 {
+		return c.JSON(http.StatusNotFound, "Organizations not found")
+	}
+	for _, organization := range Organizations {
+		organization.AppID = ""
+		organization.AppSecret = ""
+		organization.AppScope = ""
+		organization.BaseURL = ""
+	}
+	return c.JSON(http.StatusOK, Organizations)
+}
+
+func (H *Handler) GetUserProcesses(c echo.Context) error {
+	// Obtener el ID del usuario del token JWT
+	id := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
+	// Obtener el usuario de la base de datos
+	User := new(ORM.Usuario)
+	User.Get(H.Db, uint(id))
+	if User.ID == 0 {
+		return c.JSON(http.StatusNotFound, "User not found")
+	}
+	// Obtener las organizaciones del usuario
+	var Organizations []*ORM.Organizacion
+	_ = H.Db.Model(&User).Association("Organizaciones").Find(&Organizations)
+	if Organizations == nil || len(Organizations) == 0 {
+		return c.JSON(http.StatusNotFound, "Organizations not found")
+	}
+	// Obtener los procesos de cada organización
+	var Processes []*ORM.Proceso
+	for _, organization := range Organizations {
+		_ = H.Db.Model(&organization).Association("Procesos").Find(&Processes)
+	}
+	if Processes == nil || len(Processes) == 0 {
+		return c.JSON(http.StatusNotFound, "Processes not found")
+	}
+	return c.JSON(http.StatusOK, Processes)
+}
+
+func (H *Handler) GetUserIncidents(c echo.Context) error {
+	// Obtener el ID del usuario del token JWT
+	id := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
+	// Obtener el usuario de la base de datos
+	User := new(ORM.Usuario)
+	User.Get(H.Db, uint(id))
+	if User.ID == 0 {
+		return c.JSON(http.StatusNotFound, "User not found")
+	}
+	var procesosWithIncidents []*ORM.Proceso
+	for _, proceso := range User.Procesos {
+		proceso.Get(H.Db, proceso.ID)
+		for _, usuario := range proceso.Usuarios {
+			usuario.Password = ""
+		}
+		proceso.Organizacion.AppSecret = ""
+		proceso.Organizacion.AppID = ""
+		proceso.Organizacion.AppScope = ""
+		if proceso.IncidentesProceso != nil && len(proceso.IncidentesProceso) > 0 {
+			procesosWithIncidents = append(procesosWithIncidents, proceso)
+		}
+	}
+	var returnJson = make(map[string][]*ORM.Proceso)
+
+	for _, process := range procesosWithIncidents {
+		ProcessWithOnGoingIncidents := *process
+		ProcessWithOnGoingIncidents.IncidentesProceso = make([]*ORM.IncidenteProceso, 0)
+		ProcessWithoutIncidents := *process
+		ProcessWithoutIncidents.IncidentesProceso = make([]*ORM.IncidenteProceso, 0)
+		for _, incidentes := range process.IncidentesProceso {
+			if incidentes.Estado != 3 {
+				ProcessWithOnGoingIncidents.IncidentesProceso = append(ProcessWithOnGoingIncidents.IncidentesProceso, incidentes)
+			} else {
+				ProcessWithoutIncidents.IncidentesProceso = append(ProcessWithoutIncidents.IncidentesProceso, incidentes)
+			}
+		}
+		returnJson["ongoing"] = append(returnJson["ongoing"], &ProcessWithOnGoingIncidents)
+		returnJson["finished"] = append(returnJson["finished"], &ProcessWithoutIncidents)
+	}
+	// sort incidents inside process by incidentes.Detalles[0].FechaInicio
+	for _, process := range returnJson["ongoing"] {
+		sort.Slice(process.IncidentesProceso, func(i, j int) bool {
+			if len(process.IncidentesProceso[i].Detalles) == 0 || len(process.IncidentesProceso[j].Detalles) == 0 {
+				return false
+			}
+			return process.IncidentesProceso[i].Detalles[0].FechaInicio.After(process.IncidentesProceso[j].Detalles[0].FechaInicio)
+		})
+	}
+	return c.JSON(http.StatusOK, returnJson)
+}
+
+func (H *Handler) PostIncidentDetails(c echo.Context) error {
+	// Form data:
+	// - incidentID: ID del incidente
+	// - details: Detalles del incidente
+	// - fechaInicio: Fecha de inicio del detalle
+	// - fechaFin: Fecha de fin del detalle
+	// - estado: Nuevo estado del incidente
+	// Obtener el ID del usuario del token JWT
+	id := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
+	// Obtener el usuario de la base de datos
+	User := new(ORM.Usuario)
+	User.Get(H.Db, uint(id))
+	if User.ID == 0 {
+		return c.JSON(http.StatusNotFound, "User not found")
+	}
+	// Obtener el incidente de la base de datos
+	Incident := new(ORM.IncidenteProceso)
+	IncidentID, _ := strconv.Atoi(c.FormValue("incidentID"))
+	Incident.Get(H.Db, uint(IncidentID))
+	if Incident.ID == 0 {
+		return c.JSON(http.StatusNotFound, "Incident not found")
+	}
+	// Verifica que el incidente no esté cerrado
+	if Incident.Estado == 3 {
+		return c.JSON(http.StatusForbidden, "Incident is already closed")
+	}
+	// Obtener el proceso del incidente
+	Process := new(ORM.Proceso)
+	Process.Get(H.Db, Incident.ProcesoID)
+	if Process.ID == 0 {
+		return c.JSON(http.StatusNotFound, "Process not found")
+	}
+	// Revisar que el usuario tenga acceso al proceso
+	var UserHasAccess bool
+	for _, user := range Process.Usuarios {
+		if user.ID == User.ID {
+			UserHasAccess = true
+		}
+	}
+	if !UserHasAccess {
+		return c.JSON(http.StatusForbidden, "User does not have access to process")
+	}
+	// Obtener el estado del incidente, debe ser 2 o 3
+	IncidentState, err := strconv.Atoi(c.FormValue("estado"))
+	if err != nil || IncidentState != 3 && IncidentState != 2 {
+		return c.JSON(http.StatusBadRequest, "Invalid incident state")
+	}
+	// Obtener la fecha de inicio del detalle (DateTime from Dart)
+	IncidentDetailStartDate, err := time.Parse("2006-01-02 15:04:05", c.FormValue("fechaInicio"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, "Invalid incident detail start date")
+	}
+	// Obtener la fecha de fin del detalle (DateTime from Dart)
+	IncidentDetailEndDate, err := time.Parse("2006-01-02 15:04:05", c.FormValue("fechaFin"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, "Invalid incident detail end date")
+	}
+	// Verificar que la fecha de fin sea mayor a la fecha de inicio
+	if IncidentDetailEndDate.Before(IncidentDetailStartDate) {
+		return c.JSON(http.StatusBadRequest, "End date must be greater than start date")
+	}
+	// Verificar que la fecha de inicio sea mayor a la fecha del último detalle
+	if len(Incident.Detalles) > 0 {
+		if IncidentDetailStartDate.Before(Incident.Detalles[len(Incident.Detalles)-1].FechaInicio) {
+			return c.JSON(http.StatusBadRequest, "Start date must be greater than last detail start date")
+		}
+	}
+	// Crear el detalle del incidente
+	IncidentDetail := &ORM.IncidentesDetalle{
+		IncidenteID: int(Incident.ID),
+		Detalle:     c.FormValue("details"),
+		FechaInicio: IncidentDetailStartDate,
+		FechaFin:    IncidentDetailEndDate,
+	}
+	Incident.Estado = IncidentState
+	Incident.Detalles = append(Incident.Detalles, IncidentDetail)
+	H.Db.Save(Incident)
+	return c.JSON(http.StatusOK, Incident)
+}
 
 func main() {
 	e := echo.New()
@@ -548,7 +709,7 @@ func main() {
 		Db:                  OpenDB(),
 		TokenKey:            generatePassword(32),
 		UniversalRoutes:     []string{"/auth", "/forgot"},
-		UserUniversalRoutes: []string{"/profile"},
+		UserUniversalRoutes: []string{"/user/profile"},
 		DbKey:               os.Getenv("DB_KEY"),
 	}
 	if H.DbKey == "" {
@@ -578,20 +739,20 @@ func main() {
 	e.Use(H.checkRoleMiddleware())
 	e.POST("/auth", H.Login)
 	e.POST("/forgot", H.ForgotPassword)
-	e.GET("/hello", func(c echo.Context) error {
-		return c.String(http.StatusOK, "Hello, World!")
-	})
-	e.GET("/users", H.GetUsers)
-	e.DELETE("/users", H.DeleteUser)
-	e.POST("/users", H.CreateUser)
-	e.PUT("/users", H.UpdateUser)
-	e.GET("/profile", H.GetProfile)
-	e.PUT("/profile", H.UpdateProfile)
-	e.POST("/organization", H.CreateOrganization)
-	e.PUT("/organization", H.UpdateOrganization)
-	e.DELETE("/organization", H.DeleteOrganization)
-	e.GET("/organization", H.GetOrganizations)
-	e.GET("/user-orgs", H.GetUserOrganizations)
+	e.PUT("/user/profile", H.UpdateProfile)
+	e.GET("/user/organizations", H.GetUserOrganizations)
+	e.GET("/user/processes", H.GetUserProcesses)
+	e.GET("/user/incidents", H.GetUserIncidents)
+	e.POST("/user/incidents/details", H.PostIncidentDetails)
+	e.DELETE("/admin/users", H.DeleteUser)
+	e.GET("/admin/users", H.GetUsers)
+	e.POST("/admin/users", H.CreateUser)
+	e.PUT("/admin/users", H.UpdateUser)
+	e.GET("/user/profile", H.GetProfile)
+	e.POST("/admin/organization", H.CreateOrganization)
+	e.PUT("/admin/organization", H.UpdateOrganization)
+	e.DELETE("/admin/organization", H.DeleteOrganization)
+	e.GET("/admin/organization", H.GetOrganizations)
 	H.RefreshDataBase(e)
 	var err error
 	listener, err := localtunnel.Listen(localtunnel.Options{
