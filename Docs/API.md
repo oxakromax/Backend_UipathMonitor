@@ -34,16 +34,32 @@ Realizar una solicitud HTTP GET a la API con el siguiente formato:
 
 Esto devuelve todos los usuarios cuyo nombre comienza con "John" y que no están en las organizaciones con ID 1, 2 y 3.
 
+```json
+[
+    {
+        "ID": 1,
+        "CreatedAt": "2023-03-08T18:21:41.29818-03:00",
+        "UpdatedAt": "2023-03-26T00:27:15.465631-03:00",
+        "DeletedAt": null,
+        "Nombre": "test",
+        "Apellido": "test",
+        "Email": "test@gmail.com",
+        "Password": "",
+        "Roles": [],
+        "Procesos": [],
+        "Organizaciones": []
+    }
+]
+```
+
 Detalles de implementación
 --------------------------
 
 La función realiza las siguientes acciones:
 
-1. Verifica si se proporciona el parámetro "id" en la URL. Si es así, busca al usuario con ese ID y lo devuelve como
-   resultado.
-2. Analiza los campos opcionales del JSON proporcionado (`query`, `relational_condition`, `relational_query`) y los
+1. Analiza los campos opcionales del JSON proporcionado (`query`, `relational_condition`, `relational_query`) y los
    utiliza para realizar consultas y filtrar usuarios en la base de datos.
-3. Si se proporciona un valor para `query`, realiza una consulta en la base de datos de usuarios utilizando ese valor.
-4. Aplica la condición relacional (`relational_condition`) y la consulta relacional (`relational_query`) si se
+2. Si se proporciona un valor para `query`, realiza una consulta en la base de datos de usuarios utilizando ese valor.
+3. Aplica la condición relacional (`relational_condition`) y la consulta relacional (`relational_query`) si se
    proporcionan.
-5. Devuelve el resultado en formato JSON.
+4. Devuelve el resultado en formato JSON.
