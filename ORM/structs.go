@@ -99,9 +99,10 @@ type Rol struct {
 
 type Route struct {
 	gorm.Model
-	Method string `gorm:"not null"`
-	Route  string `gorm:"not null"`
-	Roles  []*Rol `gorm:"many2many:roles_routes;"`
+	Method      string `gorm:"not null"`
+	Route       string `gorm:"not null"`
+	Description string `gorm:"not null default:''"`
+	Roles       []*Rol `gorm:"many2many:roles_routes;"`
 }
 
 func (o *Organizacion) RefreshUiPathToken() error {
@@ -255,7 +256,11 @@ func (o *Organizacion) GetFromApi(structType interface{}, folderid ...int) error
 }
 
 func (o *Organizacion) CheckAccessAPI() error {
-	_, err := o.RequestAPI("GET", "Folders", nil)
+	err := o.RefreshUiPathToken()
+	if err != nil {
+		return err
+	}
+	_, err = o.RequestAPI("GET", "Folders", nil)
 	return err
 }
 

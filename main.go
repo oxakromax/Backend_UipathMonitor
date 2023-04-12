@@ -6,7 +6,6 @@ import (
 	"github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/localtunnel/go-localtunnel"
 	"github.com/oxakromax/Backend_UipathMonitor/ORM"
 	"github.com/oxakromax/Backend_UipathMonitor/UipathAPI"
 	"github.com/oxakromax/Backend_UipathMonitor/functions"
@@ -235,13 +234,226 @@ func (H *Handler) GetUsers(c echo.Context) error {
 		User.Password = ""
 		return c.JSON(http.StatusOK, User)
 	}
-
-	// Obtener todos los usuarios de la base de datos
-	Users := new(ORM.Usuario).GetAll(H.Db)
+	ParamsJson := new(struct {
+		Query               string `json:"query" form:"query" query:"query"`
+		RelationalCondition string `json:"relational_condition" form:"relational_condition" query:"relational_condition"`
+		RelationalQuery     string `json:"relational_query" form:"relational_query" query:"relational_query"`
+	})
+	// Obtener la consulta de la solicitud
+	err := c.Bind(ParamsJson)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, "Invalid query")
+	}
+	query := ParamsJson.Query
+	Users := make([]*ORM.Usuario, 0)
+	if query != "" {
+		// Obtener todos los usuarios de la base de datos que coincidan con la consulta
+		H.Db.Where(query).Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Preload("Organizaciones").Find(&Users)
+	} else {
+		// Obtener todos los usuarios de la base de datos
+		Users = new(ORM.Usuario).GetAll(H.Db)
+	}
 	// Ocultar la contraseña de los usuarios
 	for i := range Users {
 		Users[i].Password = ""
+		for i2 := range Users[i].Organizaciones {
+			Users[i].Organizaciones[i2].AppID = ""
+			Users[i].Organizaciones[i2].AppSecret = ""
+		}
 	}
+	RelationalCondition := ParamsJson.RelationalCondition
+	if RelationalCondition != "" {
+		switch RelationalCondition {
+		case "NotInOrg":
+			// if Not In Org is used, Query must be like: "id NOT IN (?)"
+			orgsID := strings.Split(ParamsJson.RelationalQuery, ",")
+			// Convertir los ID de la consulta en números enteros
+			orgsIDInt := make([]uint, 0)
+			for _, orgID := range orgsID {
+				ID, err := strconv.Atoi(orgID)
+				if err != nil {
+					return c.JSON(http.StatusBadRequest, "Invalid ID")
+				}
+				orgsIDInt = append(orgsIDInt, uint(ID))
+			}
+			FinalUsers := make([]*ORM.Usuario, 0)
+			for _, user := range Users {
+				Found := false
+				for _, UserOrg := range user.Organizaciones {
+					for _, u := range orgsIDInt {
+						if UserOrg.ID == u {
+							Found = true
+							break
+						}
+					}
+					if Found {
+						break
+					}
+				}
+				if !Found {
+					FinalUsers = append(FinalUsers, user)
+				}
+			}
+			Users = FinalUsers
+		case "InOrg":
+			// if In Org is used, Query must be like: "id IN (?)"
+			orgsID := strings.Split(ParamsJson.RelationalQuery, ",")
+			// Convertir los ID de la consulta en números enteros
+			orgsIDInt := make([]uint, 0)
+			for _, orgID := range orgsID {
+				ID, err := strconv.Atoi(orgID)
+				if err != nil {
+					return c.JSON(http.StatusBadRequest, "Invalid ID")
+				}
+				orgsIDInt = append(orgsIDInt, uint(ID))
+			}
+			FinalUsers := make([]*ORM.Usuario, 0)
+			for _, user := range Users {
+				Found := false
+				for _, UserOrg := range user.Organizaciones {
+					for _, u := range orgsIDInt {
+						if UserOrg.ID == u {
+							Found = true
+							break
+						}
+					}
+					if Found {
+						break
+					}
+				}
+				if Found {
+					FinalUsers = append(FinalUsers, user)
+				}
+			}
+			Users = FinalUsers
+		case "NotInRole":
+			// if Not In Role is used, Query must be like: "id NOT IN (?)"
+			rolesID := strings.Split(ParamsJson.RelationalQuery, ",")
+			// Convertir los ID de la consulta en números enteros
+			rolesIDInt := make([]uint, 0)
+			for _, roleID := range rolesID {
+				ID, err := strconv.Atoi(roleID)
+				if err != nil {
+					return c.JSON(http.StatusBadRequest, "Invalid ID")
+				}
+				rolesIDInt = append(rolesIDInt, uint(ID))
+			}
+			FinalUsers := make([]*ORM.Usuario, 0)
+			for _, user := range Users {
+				Found := false
+				for _, UserRole := range user.Roles {
+					for _, u := range rolesIDInt {
+						if UserRole.ID == u {
+							Found = true
+							break
+						}
+					}
+					if Found {
+						break
+					}
+				}
+				if !Found {
+					FinalUsers = append(FinalUsers, user)
+				}
+			}
+			Users = FinalUsers
+		case "InRole":
+			// if In Role is used, Query must be like: "id IN (?)"
+			rolesID := strings.Split(ParamsJson.RelationalQuery, ",")
+			// Convertir los ID de la consulta en números enteros
+			rolesIDInt := make([]uint, 0)
+			for _, roleID := range rolesID {
+				ID, err := strconv.Atoi(roleID)
+				if err != nil {
+					return c.JSON(http.StatusBadRequest, "Invalid ID")
+				}
+				rolesIDInt = append(rolesIDInt, uint(ID))
+			}
+			FinalUsers := make([]*ORM.Usuario, 0)
+			for _, user := range Users {
+				Found := false
+				for _, UserRole := range user.Roles {
+					for _, u := range rolesIDInt {
+						if UserRole.ID == u {
+							Found = true
+							break
+						}
+					}
+					if Found {
+						break
+					}
+				}
+				if Found {
+					FinalUsers = append(FinalUsers, user)
+				}
+			}
+			Users = FinalUsers
+		case "NotInProcess":
+			// if Not In Process is used, Query must be like: "id NOT IN (?)"
+			processesID := strings.Split(ParamsJson.RelationalQuery, ",")
+			// Convertir los ID de la consulta en números enteros
+			processesIDInt := make([]uint, 0)
+			for _, processID := range processesID {
+				ID, err := strconv.Atoi(processID)
+				if err != nil {
+					return c.JSON(http.StatusBadRequest, "Invalid ID")
+				}
+				processesIDInt = append(processesIDInt, uint(ID))
+			}
+			FinalUsers := make([]*ORM.Usuario, 0)
+			for _, user := range Users {
+				Found := false
+				for _, UserProcess := range user.Procesos {
+					for _, u := range processesIDInt {
+						if UserProcess.ID == u {
+							Found = true
+							break
+						}
+					}
+					if Found {
+						break
+					}
+				}
+				if !Found {
+					FinalUsers = append(FinalUsers, user)
+				}
+			}
+			Users = FinalUsers
+		case "InProcess":
+			// if In Process is used, Query must be like: "id IN (?)"
+			processesID := strings.Split(ParamsJson.RelationalQuery, ",")
+			// Convertir los ID de la consulta en números enteros
+			processesIDInt := make([]uint, 0)
+			for _, processID := range processesID {
+				ID, err := strconv.Atoi(processID)
+				if err != nil {
+					return c.JSON(http.StatusBadRequest, "Invalid ID")
+				}
+				processesIDInt = append(processesIDInt, uint(ID))
+			}
+			FinalUsers := make([]*ORM.Usuario, 0)
+			for _, user := range Users {
+				Found := false
+				for _, UserProcess := range user.Procesos {
+					for _, u := range processesIDInt {
+						if UserProcess.ID == u {
+							Found = true
+							break
+						}
+					}
+					if Found {
+						break
+					}
+				}
+				if Found {
+					FinalUsers = append(FinalUsers, user)
+				}
+			}
+			Users = FinalUsers
+		}
+
+	}
+
 	return c.JSON(http.StatusOK, Users)
 }
 func (H *Handler) DeleteUser(c echo.Context) error {
@@ -402,7 +614,7 @@ func (H *Handler) CreateOrganization(c echo.Context) error {
 	}
 	// Guardar la organización en la base de datos
 	H.Db.Create(&Organization)
-	// Agregar a cada Administrador de la organización
+	// Agregar a cada Administrador a la organización
 	Admins := new(ORM.Usuario).GetAdmins(H.Db)
 	for _, admin := range Admins {
 		_ = H.Db.Model(&Organization).Association("Usuarios").Append(admin)
@@ -703,6 +915,74 @@ func (H *Handler) PostIncidentDetails(c echo.Context) error {
 	return c.JSON(http.StatusOK, Incident)
 }
 
+func (H *Handler) CreateUpdateOrganizationClient(c echo.Context) error {
+	Client := new(ORM.Cliente)
+	if err := c.Bind(Client); err != nil {
+		return c.JSON(http.StatusBadRequest, "Invalid JSON")
+	}
+	// check if organization exists
+	Organization := new(ORM.Organizacion)
+	Organization.Get(H.Db, Client.OrganizacionID)
+	if Organization.ID == 0 {
+		return c.JSON(http.StatusNotFound, "Organization not found")
+	}
+	// Check email doesn't exist
+	NewClient := new(ORM.Cliente)
+	H.Db.Where("email = ?", Client.Email).First(NewClient)
+	if NewClient.ID != 0 && NewClient.ID != Client.ID {
+		return c.JSON(http.StatusBadRequest, "Email already exists")
+	}
+	if int(Client.ID) == 0 {
+		H.Db.Create(Client)
+	} else {
+		// check if client exists
+		NewClient := new(ORM.Cliente)
+		NewClient.Get(H.Db, Client.ID)
+		if NewClient.ID == 0 {
+			return c.JSON(http.StatusNotFound, "Client not found")
+		}
+		H.Db.Save(Client)
+	}
+	return c.JSON(http.StatusOK, Client)
+}
+
+func (H *Handler) DeleteOrganizationClient(c echo.Context) error {
+	Client := new(ORM.Cliente)
+	if err := c.Bind(Client); err != nil {
+		return c.JSON(http.StatusBadRequest, "Invalid JSON")
+	}
+	if Client.ID == 0 {
+		return c.JSON(http.StatusBadRequest, "Invalid client ID")
+	}
+	// Check if organization exists
+	Organization := new(ORM.Organizacion)
+	Organization.Get(H.Db, Client.OrganizacionID)
+	if Organization.ID == 0 {
+		return c.JSON(http.StatusNotFound, "Organization not found")
+	}
+	// Check if client exists
+	Client.Get(H.Db, Client.ID)
+	if Client.ID == 0 {
+		return c.JSON(http.StatusNotFound, "Client not found")
+	}
+	H.Db.Delete(Client)
+	return c.JSON(http.StatusOK, Client)
+}
+
+func (H *Handler) UpdateProcessAlias(c echo.Context) error {
+	Process := new(ORM.Proceso)
+	// Params id
+	ProcessID, _ := strconv.Atoi(c.QueryParam("id"))
+	Process.Get(H.Db, uint(ProcessID))
+	if Process.ID == 0 {
+		return c.JSON(http.StatusNotFound, "Process not found")
+	}
+	// Params alias
+	Process.Alias = c.QueryParam("alias")
+	H.Db.Save(Process)
+	return c.JSON(http.StatusOK, Process)
+}
+
 func main() {
 	e := echo.New()
 	H := &Handler{
@@ -739,6 +1019,7 @@ func main() {
 	e.Use(H.checkRoleMiddleware())
 	e.POST("/auth", H.Login)
 	e.POST("/forgot", H.ForgotPassword)
+	e.GET("/user/profile", H.GetProfile)
 	e.PUT("/user/profile", H.UpdateProfile)
 	e.GET("/user/organizations", H.GetUserOrganizations)
 	e.GET("/user/processes", H.GetUserProcesses)
@@ -748,22 +1029,24 @@ func main() {
 	e.GET("/admin/users", H.GetUsers)
 	e.POST("/admin/users", H.CreateUser)
 	e.PUT("/admin/users", H.UpdateUser)
-	e.GET("/user/profile", H.GetProfile)
 	e.POST("/admin/organization", H.CreateOrganization)
 	e.PUT("/admin/organization", H.UpdateOrganization)
 	e.DELETE("/admin/organization", H.DeleteOrganization)
 	e.GET("/admin/organization", H.GetOrganizations)
+	e.POST("/admin/organization/client", H.CreateUpdateOrganizationClient)
+	e.DELETE("/admin/organization/client", H.DeleteOrganizationClient)
+	e.PUT("/admin/organization/process", H.UpdateProcessAlias)
 	H.RefreshDataBase(e)
 	var err error
-	listener, err := localtunnel.Listen(localtunnel.Options{
-		Subdomain: "golanguipathmonitortunnel",
-	})
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Println("Tunnel URL: " + listener.URL())
-	e.Listener = listener
+	//listener, err := localtunnel.Listen(localtunnel.Options{
+	//	Subdomain: "golanguipathmonitortunnel",
+	//})
+	//if err != nil {
+	//	fmt.Println(err)
+	//	return
+	//}
+	//fmt.Println("Tunnel URL: " + listener.URL())
+	//e.Listener = listener
 	err = e.Start(":8080")
 	if err != nil {
 		fmt.Println(err)
