@@ -6,7 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/oxakromax/Backend_UipathMonitor/ORM"
-	"github.com/oxakromax/Backend_UipathMonitor/Routes/Structs"
+	"github.com/oxakromax/Backend_UipathMonitor/Server"
 	"github.com/oxakromax/Backend_UipathMonitor/functions"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -36,7 +36,7 @@ func OpenDB() *gorm.DB {
 
 func main() {
 	e := echo.New()
-	H := &Structs.Handler{
+	H := &Server.Handler{
 		Db:                  OpenDB(),
 		TokenKey:            functions.GeneratePassword(32),
 		UniversalRoutes:     []string{"/auth", "/forgot"},

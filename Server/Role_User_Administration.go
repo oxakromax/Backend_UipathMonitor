@@ -1,4 +1,4 @@
-package Admin
+package Server
 
 import (
 	"github.com/labstack/echo/v4"
@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-func (H *Structs.Handler) GetUsers(c echo.Context) error {
+func (H *Handler) GetUsers(c echo.Context) error {
 	// if query id is not empty, return the user with that id
 	id := c.QueryParam("id")
 	if id != "" {
@@ -252,7 +252,7 @@ func (H *Structs.Handler) GetUsers(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, Users)
 }
-func (H *Routes.Handler) DeleteUser(c echo.Context) error {
+func (H *Handler) DeleteUser(c echo.Context) error {
 	id := c.QueryParam("id")
 	// Convertir el ID de la consulta en un número entero
 	ID, err := strconv.Atoi(id)
@@ -269,7 +269,7 @@ func (H *Routes.Handler) DeleteUser(c echo.Context) error {
 	H.Db.Delete(&User)
 	return c.JSON(http.StatusOK, "User deleted")
 }
-func (H *Routes.Handler) CreateUser(c echo.Context) error {
+func (H *Handler) CreateUser(c echo.Context) error {
 	// Obtener el usuario de la solicitud
 	User := new(ORM.Usuario)
 	if err := c.Bind(User); err != nil {
@@ -303,7 +303,7 @@ func (H *Routes.Handler) CreateUser(c echo.Context) error {
 	User.Password = ""
 	return c.JSON(http.StatusOK, User)
 }
-func (H *Routes.Handler) UpdateUser(c echo.Context) error {
+func (H *Handler) UpdateUser(c echo.Context) error {
 	// Obtener ID desde query
 	id := c.QueryParam("id")
 	// Convertir el ID de la consulta en un número entero

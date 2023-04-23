@@ -1,14 +1,22 @@
-package Routes
+package Server
 
 import (
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/oxakromax/Backend_UipathMonitor/ORM"
 	"github.com/oxakromax/Backend_UipathMonitor/functions"
+	"gorm.io/gorm"
 	"strings"
 )
 
-func (H *Structs.Handler) RefreshDataBase(e *echo.Echo) {
+type Handler struct {
+	Db                  *gorm.DB
+	TokenKey            string
+	UniversalRoutes     []string
+	UserUniversalRoutes []string
+	DbKey               string
+}
+
+func (H *Handler) RefreshDataBase(e *echo.Echo) {
 	// Crear una lista de rutas a partir de las rutas definidas en Echo
 	routes := new([]*ORM.Route)
 	for _, r := range e.Routes() {
@@ -116,6 +124,15 @@ func (H *Structs.Handler) RefreshDataBase(e *echo.Echo) {
 		}
 		H.Db.Create(&userRole)
 	}
+	userAdministrationRole := new(ORM.Rol)
+	H.Db.Where("nombre = ?", "user_administration").First(&userAdministrationRole)
+	if userAdministrationRole.ID == 0 {
+		userAdministrationRole = &ORM.Rol{
+			Nombre:      "user_administration",
+			Description: "El rol de administración de usuarios tiene acceso a modificar, crear, eliminar y ver los usuarios del sistema.",
+		}
+		H.Db.Create(&userAdministrationRole)
+	}
 
 	for _, route := range *routes {
 		if strings.Contains(route.Route, "/admin/organization") {
@@ -124,36 +141,11 @@ func (H *Structs.Handler) RefreshDataBase(e *echo.Echo) {
 		if strings.HasPrefix(route.Route, "/user") {
 			userRole.Rutas = append(userRole.Rutas, route)
 		}
+		if strings.HasPrefix(route.Route, "/admin/users") {
+			userAdministrationRole.Rutas = append(userAdministrationRole.Rutas, route)
+		}
 	}
 	_ = H.Db.Model(&organizationRole).Association("Rutas").Replace(organizationRole.Rutas)
 	_ = H.Db.Model(&userRole).Association("Rutas").Replace(userRole.Rutas)
-}
-
-func (H *Structs.Handler) CheckRoleMiddleware() echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			for _, route := range H.UniversalRoutes {
-				if strings.ToLower(route) == strings.ToLower(c.Path()) {
-					return next(c) // Permitir el acceso a la ruta
-				}
-			}
-			// Verificar si el usuario está autenticado y tiene un rol permitido
-			id := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64)) // Extraer el ID del usuario del token JWT
-			for _, route := range H.UserUniversalRoutes {
-				if strings.ToLower(route) == strings.ToLower(c.Path()) {
-					return next(c) // Permitir el acceso a la ruta
-				}
-			}
-			User := ORM.Usuario{}
-			User.Get(H.Db, uint(id))              // Obtener el usuario de la base de datos
-			for _, UserRole := range User.Roles { // Iterar sobre los roles del usuario
-				for _, route := range UserRole.Rutas {
-					if strings.ToLower(route.Route) == strings.ToLower(c.Path()) && strings.ToLower(route.Method) == strings.ToLower(c.Request().Method) {
-						return next(c) // Permitir el acceso al usuario si tiene el rol permitido
-					}
-				}
-			}
-			return echo.ErrUnauthorized // Acceso denegado si el usuario no tiene el rol permitido
-		}
-	}
+	_ = H.Db.Model(&userAdministrationRole).Association("Rutas").Replace(userAdministrationRole.Rutas)
 }

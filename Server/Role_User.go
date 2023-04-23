@@ -1,4 +1,4 @@
-package Routes
+package Server
 
 import (
 	"github.com/golang-jwt/jwt/v4"
@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func (H *Structs.Handler) Login(c echo.Context) error {
+func (H *Handler) Login(c echo.Context) error {
 	email := c.FormValue("email")       // Obtener el valor del campo "email" del formulario de inicio de sesión
 	password := c.FormValue("password") // Obtener el valor del campo "password" del formulario de inicio de sesión
 	if email == "" || password == "" {  // Validar si los campos son nulos o vacíos
@@ -41,7 +41,7 @@ func (H *Structs.Handler) Login(c echo.Context) error {
 	})
 }
 
-func (H *Structs.Handler) ForgotPassword(c echo.Context) error {
+func (H *Handler) ForgotPassword(c echo.Context) error {
 	email := c.FormValue("email") // Obtener el valor del campo "email" del formulario de inicio de sesión
 	if email == "" {              // Validar si los campos son nulos o vacíos
 		return c.JSON(http.StatusBadRequest, "Invalid email") // Devolver un error 400 de solicitud incorrecta con un mensaje de error
@@ -65,7 +65,7 @@ func (H *Structs.Handler) ForgotPassword(c echo.Context) error {
 	H.Db.Save(&user)
 	return c.JSON(http.StatusOK, "Password reset successfully")
 }
-func (H *Structs.Handler) GetProfile(c echo.Context) error {
+func (H *Handler) GetProfile(c echo.Context) error {
 	// Obtener el ID del usuario del token JWT
 	id := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
 	// Obtener el usuario de la base de datos
@@ -85,7 +85,7 @@ func (H *Structs.Handler) GetProfile(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, User)
 }
-func (H *Structs.Handler) UpdateProfile(c echo.Context) error {
+func (H *Handler) UpdateProfile(c echo.Context) error {
 	// Obtener el ID del usuario del token JWT
 	id := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
 	// Obtener el usuario de la base de datos
@@ -125,7 +125,7 @@ func (H *Structs.Handler) UpdateProfile(c echo.Context) error {
 	User.Password = ""
 	return c.JSON(http.StatusOK, User)
 }
-func (H *Structs.Handler) GetUserOrganizations(c echo.Context) error {
+func (H *Handler) GetUserOrganizations(c echo.Context) error {
 	// Obtener el ID del usuario del token JWT
 	id := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
 	// Obtener el usuario de la base de datos
@@ -149,7 +149,7 @@ func (H *Structs.Handler) GetUserOrganizations(c echo.Context) error {
 	return c.JSON(http.StatusOK, Organizations)
 }
 
-func (H *Structs.Handler) GetUserProcesses(c echo.Context) error {
+func (H *Handler) GetUserProcesses(c echo.Context) error {
 	// Obtener el ID del usuario del token JWT
 	id := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
 	// Obtener el usuario de la base de datos
@@ -175,7 +175,7 @@ func (H *Structs.Handler) GetUserProcesses(c echo.Context) error {
 	return c.JSON(http.StatusOK, Processes)
 }
 
-func (H *Structs.Handler) GetUserIncidents(c echo.Context) error {
+func (H *Handler) GetUserIncidents(c echo.Context) error {
 	// Obtener el ID del usuario del token JWT
 	id := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
 	// Obtener el usuario de la base de datos
@@ -226,7 +226,7 @@ func (H *Structs.Handler) GetUserIncidents(c echo.Context) error {
 	return c.JSON(http.StatusOK, returnJson)
 }
 
-func (H *Structs.Handler) PostIncidentDetails(c echo.Context) error {
+func (H *Handler) PostIncidentDetails(c echo.Context) error {
 	// Form data:
 	// - incidentID: ID del incidente
 	// - details: Detalles del incidente
