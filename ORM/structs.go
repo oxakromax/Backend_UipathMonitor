@@ -49,12 +49,14 @@ type Proceso struct {
 	gorm.Model
 	Nombre            string              `gorm:"not null"`
 	Alias             string              `gorm:"not null,default:''"`
+	UipathProcessID   uint                `gorm:"not null,default:0"`
 	Folderid          uint                `gorm:"not null"`
 	Foldername        string              `gorm:"not null,default:''"`
 	OrganizacionID    uint                `gorm:"not null"`
 	WarningTolerance  int                 `gorm:"not null;default:10"`
 	ErrorTolerance    int                 `gorm:"not null;default:0"`
 	FatalTolerance    int                 `gorm:"not null;default:0"`
+	ActiveMonitoring  bool                `gorm:"not null;default:false"`
 	Organizacion      *Organizacion       `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
 	IncidentesProceso []*IncidenteProceso `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
 	Clientes          []*Cliente          `gorm:"many2many:procesos_clientes;"`
@@ -92,17 +94,17 @@ type Usuario struct {
 
 type Rol struct {
 	gorm.Model
-	Nombre   string     `gorm:"not null"`
-	Usuarios []*Usuario `gorm:"many2many:usuarios_roles;"`
-	Rutas    []*Route   `gorm:"many2many:roles_routes;"`
+	Nombre      string     `gorm:"not null"`
+	Usuarios    []*Usuario `gorm:"many2many:usuarios_roles;"`
+	Rutas       []*Route   `gorm:"many2many:roles_routes;"`
+	Description string     `gorm:"not null default:''"`
 }
 
 type Route struct {
 	gorm.Model
-	Method      string `gorm:"not null"`
-	Route       string `gorm:"not null"`
-	Description string `gorm:"not null default:''"`
-	Roles       []*Rol `gorm:"many2many:roles_routes;"`
+	Method string `gorm:"not null"`
+	Route  string `gorm:"not null"`
+	Roles  []*Rol `gorm:"many2many:roles_routes;"`
 }
 
 func (o *Organizacion) RefreshUiPathToken() error {

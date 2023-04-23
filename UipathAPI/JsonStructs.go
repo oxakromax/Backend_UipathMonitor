@@ -30,22 +30,51 @@ type LogResponse struct {
 
 // ReleasesResponse es una estructura que representa la respuesta de una petición a la API de UiPath para obtener información de los procesos.
 // La respuesta contiene el contexto OData, el número de elementos incluidos en la respuesta, y un arreglo con la información de cada proceso.
+
 type ReleasesResponse struct {
 	OdataContext string `json:"@odata.context"`
 	OdataCount   int    `json:"@odata.count"`
 	Value        []struct {
-		Key              string      `json:"TokenKey"`
-		ProcessKey       string      `json:"ProcessKey"`
-		ProcessVersion   string      `json:"ProcessVersion"`
-		IsLatestVersion  bool        `json:"IsLatestVersion"`
-		IsProcessDeleted bool        `json:"IsProcessDeleted"`
-		Description      interface{} `json:"Description"`
-		Name             string      `json:"Name"`
-		EnvironmentId    int         `json:"EnvironmentId"`
-		EnvironmentName  string      `json:"EnvironmentName"`
-		InputArguments   interface{} `json:"InputArguments"`
-		Id               int         `json:"Id"`
-		Arguments        interface{} `json:"Arguments"`
+		Key                                string      `json:"Key"`
+		ProcessKey                         string      `json:"ProcessKey"`
+		ProcessVersion                     string      `json:"ProcessVersion"`
+		IsLatestVersion                    bool        `json:"IsLatestVersion"`
+		IsProcessDeleted                   bool        `json:"IsProcessDeleted"`
+		Description                        string      `json:"Description"`
+		Name                               string      `json:"Name"`
+		EnvironmentId                      interface{} `json:"EnvironmentId"`
+		EnvironmentName                    string      `json:"EnvironmentName"`
+		EntryPointId                       int         `json:"EntryPointId"`
+		InputArguments                     interface{} `json:"InputArguments"`
+		ProcessType                        string      `json:"ProcessType"`
+		SupportsMultipleEntryPoints        bool        `json:"SupportsMultipleEntryPoints"`
+		RequiresUserInteraction            bool        `json:"RequiresUserInteraction"`
+		IsAttended                         bool        `json:"IsAttended"`
+		IsCompiled                         bool        `json:"IsCompiled"`
+		AutomationHubIdeaUrl               interface{} `json:"AutomationHubIdeaUrl"`
+		AutoUpdate                         bool        `json:"AutoUpdate"`
+		FeedId                             string      `json:"FeedId"`
+		JobPriority                        string      `json:"JobPriority"`
+		SpecificPriorityValue              int         `json:"SpecificPriorityValue"`
+		OrganizationUnitId                 int         `json:"OrganizationUnitId"`
+		OrganizationUnitFullyQualifiedName string      `json:"OrganizationUnitFullyQualifiedName"`
+		TargetFramework                    string      `json:"TargetFramework"`
+		RobotSize                          interface{} `json:"RobotSize"`
+		AutoCreateConnectedTriggers        bool        `json:"AutoCreateConnectedTriggers"`
+		RemoteControlAccess                string      `json:"RemoteControlAccess"`
+		LastModificationTime               interface{} `json:"LastModificationTime"`
+		LastModifierUserId                 interface{} `json:"LastModifierUserId"`
+		CreationTime                       time.Time   `json:"CreationTime"`
+		CreatorUserId                      int         `json:"CreatorUserId"`
+		Id                                 int         `json:"Id"`
+		Arguments                          struct {
+			Input  string `json:"Input"`
+			Output string `json:"Output"`
+		} `json:"Arguments"`
+		ProcessSettings        interface{}   `json:"ProcessSettings"`
+		VideoRecordingSettings interface{}   `json:"VideoRecordingSettings"`
+		Tags                   []interface{} `json:"Tags"`
+		ResourceOverwrites     []interface{} `json:"ResourceOverwrites"`
 	} `json:"value"`
 }
 
