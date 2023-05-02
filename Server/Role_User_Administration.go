@@ -326,9 +326,18 @@ func (H *Handler) UpdateUser(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, "Error while updating user")
 	}
+	// Rellenar campos faltantes
+	User.FillEmptyFields(H.Db)
 	// Guardar el usuario en la base de datos
 	H.Db.Save(&User)
 	// Ocultar la contraseña del usuario
 	User.Password = ""
 	return c.JSON(http.StatusOK, User)
+}
+
+func (H *Handler) GetAllRoles(c echo.Context) error {
+	// Obtener los roles de la base de datos
+	Roles := new([]*ORM.Rol)
+	H.Db.Order("Nombre").Find(&Roles)
+	return c.JSON(http.StatusOK, Roles)
 }

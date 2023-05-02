@@ -50,6 +50,33 @@ func (this *Usuario) Get(db *gorm.DB, id uint) {
 	db.Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Preload("Organizaciones").First(&this, id)
 }
 
+func (this *Usuario) FillEmptyFields(db *gorm.DB) {
+	// Check empty fields of the user and fill them with the values from the database
+	var user Usuario
+	db.First(&user, this.ID)
+	if this.Nombre == "" {
+		this.Nombre = user.Nombre
+	}
+	if this.Apellido == "" {
+		this.Apellido = user.Apellido
+	}
+	if this.Email == "" {
+		this.Email = user.Email
+	}
+	if this.Password == "" {
+		this.Password = user.Password
+	}
+	if len(this.Roles) == 0 {
+		this.Roles = user.Roles
+	}
+	if len(this.Procesos) == 0 {
+		this.Procesos = user.Procesos
+	}
+	if len(this.Organizaciones) == 0 {
+		this.Organizaciones = user.Organizaciones
+	}
+}
+
 func (this *Usuario) GetComplete(db *gorm.DB) {
 	db.Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Preload("Organizaciones").Preload("Organizaciones.Procesos").First(&this, this.ID)
 }

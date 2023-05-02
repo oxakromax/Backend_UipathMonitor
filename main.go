@@ -80,6 +80,7 @@ func main() {
 	e.GET("/admin/users", H.GetUsers)
 	e.POST("/admin/users", H.CreateUser)
 	e.PUT("/admin/users", H.UpdateUser)
+	e.GET("/admin/users/roles", H.GetAllRoles)
 	e.POST("/admin/organization", H.CreateOrganization)
 	e.PUT("/admin/organization", H.UpdateOrganization)
 	e.DELETE("/admin/organization", H.DeleteOrganization)
