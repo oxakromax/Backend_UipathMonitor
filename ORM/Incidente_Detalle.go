@@ -1,8 +1,9 @@
 package ORM
 
 import (
-	"gorm.io/gorm"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type IncidentesDetalle struct {
@@ -11,6 +12,7 @@ type IncidentesDetalle struct {
 	Detalle     string    `gorm:"type:text"`
 	FechaInicio time.Time `gorm:"precision:6"`
 	FechaFin    time.Time `gorm:"precision:6"`
+	UsuarioID   int       `gorm:"not null"`
 }
 
 // TableName TableName IncidentesDetalles Tablename: incidentes_detalle

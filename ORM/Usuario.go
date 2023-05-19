@@ -7,13 +7,14 @@ import (
 
 type Usuario struct {
 	gorm.Model
-	Nombre         string          `gorm:"not null"`
-	Apellido       string          `gorm:"not null"`
-	Email          string          `gorm:"not null"`
-	Password       string          `gorm:"not null"`
-	Roles          []*Rol          `gorm:"many2many:usuarios_roles;"`
-	Procesos       []*Proceso      `gorm:"many2many:procesos_usuarios;"`
-	Organizaciones []*Organizacion `gorm:"many2many:usuarios_organizaciones;"`
+	Nombre             string               `gorm:"not null"`
+	Apellido           string               `gorm:"not null"`
+	Email              string               `gorm:"not null"`
+	Password           string               `gorm:"not null"`
+	Roles              []*Rol               `gorm:"many2many:usuarios_roles;"`
+	Procesos           []*Proceso           `gorm:"many2many:procesos_usuarios;"`
+	Organizaciones     []*Organizacion      `gorm:"many2many:usuarios_organizaciones;"`
+	Incidentes_Detalle []*IncidentesDetalle `gorm:"foreignKey:UsuarioID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
 }
 
 func (this *Usuario) GetAdmins(db *gorm.DB) []*Usuario {
@@ -48,6 +49,24 @@ func (Usuario) GetAll(db *gorm.DB) []*Usuario {
 
 func (this *Usuario) Get(db *gorm.DB, id uint) {
 	db.Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Preload("Organizaciones").First(&this, id)
+}
+
+func (this *Usuario) HasRole(role string) bool {
+	for _, r := range this.Roles {
+		if r.Nombre == role || r.Nombre == "admin" {
+			return true
+		}
+	}
+	return false
+}
+
+func (this *Usuario) HasProcess(process int) bool {
+	for _, p := range this.Procesos {
+		if int(p.ID) == process {
+			return true
+		}
+	}
+	return false
 }
 
 func (this *Usuario) FillEmptyFields(db *gorm.DB) {

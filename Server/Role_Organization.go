@@ -1,12 +1,14 @@
 package Server
 
 import (
-	"github.com/labstack/echo/v4"
-	"github.com/oxakromax/Backend_UipathMonitor/ORM"
-	"github.com/oxakromax/Backend_UipathMonitor/UipathAPI"
-	"github.com/oxakromax/Backend_UipathMonitor/functions"
 	"net/http"
 	"strconv"
+	"time"
+
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/labstack/echo/v4"
+	"github.com/oxakromax/Backend_UipathMonitor/ORM"
+	"github.com/oxakromax/Backend_UipathMonitor/functions"
 )
 
 func (H *Handler) CreateOrganization(c echo.Context) error {
@@ -37,33 +39,16 @@ func (H *Handler) CreateOrganization(c echo.Context) error {
 	for _, admin := range Admins {
 		_ = H.Db.Model(&Organization).Association("Usuarios").Append(admin)
 	}
-	JsonFolders := new(UipathAPI.FoldersResponse)
-	err = Organization.GetFromApi(JsonFolders)
-	if err != nil {
-		for _, Folder := range JsonFolders.Value {
-			IDFolder := Folder.Id
-			JsonProcesses := new(UipathAPI.ReleasesResponse)
-			err = Organization.GetFromApi(JsonProcesses, IDFolder)
-			if err != nil {
-				for _, Process := range JsonProcesses.Value {
-					// Obtener el proceso de la base de datos
-					ProcessDB := ORM.Proceso{
-						Nombre:           Process.Name,
-						Alias:            "",
-						Folderid:         uint(IDFolder),
-						Foldername:       Folder.DisplayName,
-						OrganizacionID:   Organization.ID,
-						WarningTolerance: 999, // 999 = no limit
-						ErrorTolerance:   999, // 999 = no limit
-						FatalTolerance:   999, // 999 = no limit
-					}
-					// Guardar el proceso en la base de datos
-					H.Db.Create(&ProcessDB)
-				}
-			}
-
-		}
-	}
+	// Agregar al usuario que hace la solicitud a la organización
+	UserID := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
+	User := new(ORM.Usuario)
+	H.Db.First(User, UserID)
+	_ = H.Db.Model(&Organization).Association("Usuarios").Append(User)
+	H.Db.Save(&Organization)
+	go func() {
+		time.Sleep(1 * time.Second)
+		_ = H.UpdateUipathProcess(c)
+	}() // Actualizar los procesos de la organización a través de la función UpdateUipathProcess
 	return c.JSON(http.StatusOK, Organization)
 }
 func (H *Handler) GetOrganizations(c echo.Context) error {

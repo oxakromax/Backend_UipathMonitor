@@ -1,10 +1,12 @@
 package Server
 
 import (
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/oxakromax/Backend_UipathMonitor/ORM"
 	"github.com/oxakromax/Backend_UipathMonitor/functions"
 	"gorm.io/gorm"
+	"net/http"
 	"strings"
 )
 
@@ -133,6 +135,15 @@ func (H *Handler) RefreshDataBase(e *echo.Echo) {
 		}
 		H.Db.Create(&userAdministrationRole)
 	}
+	processesAdministrationRole := new(ORM.Rol)
+	H.Db.Where("nombre = ?", "processes_administration").First(&processesAdministrationRole)
+	if processesAdministrationRole.ID == 0 {
+		processesAdministrationRole = &ORM.Rol{
+			Nombre:      "processes_administration",
+			Description: "El rol de administración de procesos tiene acceso a modificar, crear, eliminar y ver los procesos del sistema, asi como manejar los incidentes de los procesos, el usuario con este rol debe de estar asignado a las organizaciones donde administrará los procesos.",
+		}
+		H.Db.Create(&processesAdministrationRole)
+	}
 
 	for _, route := range *routes {
 		if strings.Contains(route.Route, "/admin/organization") {
@@ -144,8 +155,27 @@ func (H *Handler) RefreshDataBase(e *echo.Echo) {
 		if strings.HasPrefix(route.Route, "/admin/users") {
 			userAdministrationRole.Rutas = append(userAdministrationRole.Rutas, route)
 		}
+		if strings.HasPrefix(route.Route, "/admin/processes") {
+			processesAdministrationRole.Rutas = append(processesAdministrationRole.Rutas, route)
+		}
 	}
 	_ = H.Db.Model(&organizationRole).Association("Rutas").Replace(organizationRole.Rutas)
 	_ = H.Db.Model(&userRole).Association("Rutas").Replace(userRole.Rutas)
 	_ = H.Db.Model(&userAdministrationRole).Association("Rutas").Replace(userAdministrationRole.Rutas)
+	_ = H.Db.Model(&processesAdministrationRole).Association("Rutas").Replace(processesAdministrationRole.Rutas)
+}
+
+func (H *Handler) PingAuth(c echo.Context) error {
+	// Si el usuario no está autenticado, retornar error
+	user := c.Get("user").(*jwt.Token)
+	claims := user.Claims.(jwt.MapClaims)
+	// Si el usuario no está autenticado, retornar error
+	if claims["id"] == nil {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"error": "No autorizado",
+		})
+	}
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"message": "Autorizado",
+	})
 }

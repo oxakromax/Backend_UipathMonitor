@@ -1,18 +1,19 @@
 package ORM
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
-	"github.com/google/go-querystring/query"
-	"github.com/oxakromax/Backend_UipathMonitor/UipathAPI"
-	"github.com/oxakromax/Backend_UipathMonitor/functions"
-	"gorm.io/gorm"
 	"io"
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
+
+	"github.com/google/go-querystring/query"
+	"github.com/oxakromax/Backend_UipathMonitor/UipathAPI"
+	"github.com/oxakromax/Backend_UipathMonitor/functions"
+	"gorm.io/gorm"
 )
 
 var (
@@ -38,7 +39,7 @@ func (Organizacion) TableName() string {
 }
 
 func (o *Organizacion) RefreshUiPathToken() error {
-	const url = "https://cloud.uipath.com/identity_/connect/token"
+	var url = o.BaseURL + "identity_/connect/token"
 	const method = "POST"
 	ClientID, _ := functions.DecryptAES(os.Getenv("DB_KEY"), o.AppID)
 	ClientSecret, _ := functions.DecryptAES(os.Getenv("DB_KEY"), o.AppSecret)
@@ -57,7 +58,7 @@ func (o *Organizacion) RefreshUiPathToken() error {
 	if err != nil {
 		return err
 	}
-	payload := strings.NewReader(vals.Encode())
+	payload := bytes.NewBufferString(vals.Encode())
 	client := new(http.Client)
 	req, err := http.NewRequest(method, url, payload)
 	if err != nil {

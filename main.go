@@ -2,7 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/labstack/echo-jwt/v4"
+	"net/http"
+	"os"
+	"strings"
+
+	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/oxakromax/Backend_UipathMonitor/ORM"
@@ -11,9 +15,6 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"net/http"
-	"os"
-	"strings"
 )
 
 func OpenDB() *gorm.DB {
@@ -70,6 +71,7 @@ func main() {
 	e.Use(H.CheckRoleMiddleware())
 	e.POST("/auth", H.Login)
 	e.POST("/forgot", H.ForgotPassword)
+	e.GET("/pingAuth", H.PingAuth)
 	e.GET("/user/profile", H.GetProfile)
 	e.PUT("/user/profile", H.UpdateProfile)
 	e.GET("/user/organizations", H.GetUserOrganizations)
@@ -90,17 +92,27 @@ func main() {
 	e.PUT("/admin/organization/process", H.UpdateProcessAlias)
 	e.PUT("/admin/organization/user", H.UpdateOrganizationUser)
 	e.PATCH("/admin/UpdateUipathProcess", H.UpdateUipathProcess)
+	e.GET("/user/processes", H.GetProcesses)
+	e.GET("/user/processes/:id", H.GetProcess)
+	e.DELETE("/user/processes/:id/clients", H.DeleteClientsFromProcess)
+	e.POST("/user/processes/:id/clients", H.AddClientsToProcess)
+	e.POST("/user/processes/:id/users", H.AddUsersToProcess)
+	e.DELETE("/user/processes/:id/users", H.DeleteUsersFromProcess)
+	e.PUT("/user/processes/:id", H.UpdateProcess)
+	e.GET("/user/processes/:id/possibleUsers", H.GetPossibleUsers)
+	e.GET("/user/processes/:id/possibleClients", H.GetPossibleClients)
+	e.POST("/user/processes/:id/newIncident", H.NewIncident)
 	H.RefreshDataBase(e)
 	var err error
-	//listener, err := localtunnel.Listen(localtunnel.Options{
-	//	Subdomain: "golanguipathmonitortunnel",
-	//})
-	//if err != nil {
-	//	fmt.Println(err)
-	//	return
-	//}
-	//fmt.Println("Tunnel URL: " + listener.URL())
-	//e.Listener = listener
+	// listener, err := localtunnel.Listen(localtunnel.Options{
+	// 	Subdomain: "golanguipathmonitortunnel",
+	// })
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
+	// fmt.Println("Tunnel URL: " + listener.URL())
+	// e.Listener = listener
 	err = e.Start(":8080")
 	if err != nil {
 		fmt.Println(err)

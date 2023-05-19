@@ -1,6 +1,8 @@
 package ORM
 
-import "gorm.io/gorm"
+import (
+	"gorm.io/gorm"
+)
 
 type Proceso struct {
 	gorm.Model
@@ -26,7 +28,7 @@ func (Proceso) TableName() string {
 
 func (Proceso) GetAll(db *gorm.DB) []*Proceso {
 	var procesos []*Proceso
-	db.Preload("Organizacion").Preload("IncidentesProceso").Preload("Clientes").Preload("Usuarios").Preload("IncidentesProceso.Detalles").Find(&procesos)
+	db.Preload("Organizacion").Preload("Organizacion.Clientes").Preload("Organizacion.Usuarios").Preload("IncidentesProceso").Preload("Clientes").Preload("Usuarios").Preload("IncidentesProceso.Detalles").Find(&procesos)
 	return procesos
 }
 
@@ -55,4 +57,46 @@ func (this *Proceso) GetEmails() []string {
 		emails = append(emails, usuario.Email)
 	}
 	return emails
+}
+
+func (this *Proceso) RemoveClients(db *gorm.DB, list []int) error {
+	var clientes []*Cliente
+	for _, id := range list {
+		cliente := &Cliente{}
+		cliente.Get(db, uint(id))
+		clientes = append(clientes, cliente)
+	}
+	return db.Model(&this).Association("Clientes").Delete(&clientes)
+}
+
+func (this *Proceso) AddClients(db *gorm.DB, list []int) error {
+	var clientes []*Cliente
+	for _, id := range list {
+		cliente := &Cliente{}
+		cliente.Get(db, uint(id))
+		clientes = append(clientes, cliente)
+	}
+	return db.Model(&this).Association("Clientes").Append(&clientes)
+}
+
+func (this Proceso) RemoveUsers(db *gorm.DB, list []int) error {
+	var usuarios []*Usuario
+	for _, id := range list {
+		usuario := &Usuario{}
+		usuario.Get(db, uint(id))
+		usuarios = append(usuarios, usuario)
+	}
+	return db.Model(&this).Association("Usuarios").Delete(&usuarios)
+
+}
+
+func (this Proceso) AddUsers(db *gorm.DB, list []int) error {
+	var usuarios []*Usuario
+	for _, id := range list {
+		usuario := &Usuario{}
+		usuario.Get(db, uint(id))
+		usuarios = append(usuarios, usuario)
+	}
+	return db.Model(&this).Association("Usuarios").Append(&usuarios)
+
 }

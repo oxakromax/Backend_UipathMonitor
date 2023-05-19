@@ -1,14 +1,15 @@
 package Server
 
 import (
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/labstack/echo/v4"
-	"github.com/oxakromax/Backend_UipathMonitor/ORM"
-	"github.com/oxakromax/Backend_UipathMonitor/functions"
 	"net/http"
 	"sort"
 	"strconv"
 	"time"
+
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/labstack/echo/v4"
+	"github.com/oxakromax/Backend_UipathMonitor/ORM"
+	"github.com/oxakromax/Backend_UipathMonitor/functions"
 )
 
 func (H *Handler) Login(c echo.Context) error {
@@ -265,7 +266,7 @@ func (H *Handler) PostIncidentDetails(c echo.Context) error {
 			UserHasAccess = true
 		}
 	}
-	if !UserHasAccess {
+	if !UserHasAccess && !User.HasRole("processes_administration") {
 		return c.JSON(http.StatusForbidden, "User does not have access to process")
 	}
 	// Obtener el estado del incidente, debe ser 2 o 3
@@ -289,7 +290,7 @@ func (H *Handler) PostIncidentDetails(c echo.Context) error {
 	}
 	// Verificar que la fecha de inicio sea mayor a la fecha del último detalle
 	if len(Incident.Detalles) > 0 {
-		if IncidentDetailStartDate.Before(Incident.Detalles[len(Incident.Detalles)-1].FechaInicio) {
+		if IncidentDetailStartDate.After(Incident.Detalles[len(Incident.Detalles)-1].FechaInicio) {
 			return c.JSON(http.StatusBadRequest, "Start date must be greater than last detail start date")
 		}
 	}
@@ -299,9 +300,76 @@ func (H *Handler) PostIncidentDetails(c echo.Context) error {
 		Detalle:     c.FormValue("details"),
 		FechaInicio: IncidentDetailStartDate,
 		FechaFin:    IncidentDetailEndDate,
+		UsuarioID:   int(User.ID),
 	}
 	Incident.Estado = IncidentState
 	Incident.Detalles = append(Incident.Detalles, IncidentDetail)
 	H.Db.Save(Incident)
 	return c.JSON(http.StatusOK, Incident)
+}
+
+// NewIncident
+func (H *Handler) NewIncident(c echo.Context) error {
+	ProcessIDStr := c.Param("id")
+	ProcessID, err := strconv.Atoi(ProcessIDStr)
+	if err != nil {
+		return c.JSON(400, "Invalid process ID")
+	}
+	// check if the user had "processes_administration" role Or if the user is the owner of the process
+	UserID := uint(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
+	User := new(ORM.Usuario)
+	User.Get(H.Db, UserID)
+	HasProcess := User.HasProcess(ProcessID)
+	HasRole := User.HasRole("processes_administration")
+	if !HasProcess && !HasRole {
+		return c.JSON(403, "Forbidden")
+	}
+	var Process ORM.Proceso
+
+	Process.Get(H.Db, uint(ProcessID))
+	if Process.ID == 0 {
+		return c.JSON(404, "Process not found")
+	}
+	// Get the incident data from the request
+	Incident := new(ORM.IncidenteProceso)
+	err = c.Bind(Incident)
+	if err != nil {
+		return c.JSON(400, "Invalid incident data")
+	}
+	// Check if the process has incidents of the same type ongoing (not Estado 3)
+	for _, incident := range Process.IncidentesProceso {
+		if incident.Tipo == Incident.Tipo && incident.Estado != 3 {
+			return c.JSON(400, "Ya existe un incidente de este tipo en el proceso")
+		}
+	}
+
+	Incident.ProcesoID = Process.ID
+	Incident.Proceso = &Process
+	// Create the incident to retrieve the ID
+	H.Db.Create(Incident)
+	// Check if there's a Detail in the incident
+	if len(Incident.Detalles) == 0 {
+		DefaultDetail := new(ORM.IncidentesDetalle)
+		DefaultDetail.FechaInicio = time.Now()
+		DefaultDetail.FechaFin = time.Now()
+		DefaultDetail.Detalle = "Evento creado por el usuario " + User.Nombre + " " + User.Apellido
+		DefaultDetail.IncidenteID = int(Incident.ID)
+		DefaultDetail.UsuarioID = int(User.ID)
+		H.Db.Create(DefaultDetail)
+	} else {
+		for i := 0; i < len(Incident.Detalles); i++ {
+			Incident.Detalles[i].IncidenteID = int(Incident.ID)
+			Incident.Detalles[i].UsuarioID = int(User.ID)
+			// Fechas
+			Incident.Detalles[i].FechaInicio = time.Now()
+			Incident.Detalles[i].FechaFin = time.Now()
+			H.Db.Create(Incident.Detalles[i])
+		}
+	}
+
+	if Incident.Tipo == 1 {
+		Process.ActiveMonitoring = false
+		H.Db.Save(Process)
+	}
+	return c.JSON(200, Incident)
 }

@@ -1,12 +1,13 @@
 package Server
 
 import (
-	"github.com/labstack/echo/v4"
-	"github.com/oxakromax/Backend_UipathMonitor/ORM"
-	"github.com/oxakromax/Backend_UipathMonitor/UipathAPI"
 	"net/http"
 	"strings"
 	"sync"
+
+	"github.com/labstack/echo/v4"
+	"github.com/oxakromax/Backend_UipathMonitor/ORM"
+	"github.com/oxakromax/Backend_UipathMonitor/UipathAPI"
 )
 
 func (H *Handler) UpdateUipathProcess(c echo.Context) error {
@@ -58,14 +59,18 @@ func (H *Handler) UpdateUipathProcess(c echo.Context) error {
 							}
 						}
 						if !exists {
-							if strings.Contains(proceso.Nombre, "[DELETED]") {
+							if strings.Contains(proceso.Nombre, "[DELETED]") && strings.Contains(proceso.Alias, "[DELETED]") {
 								continue
 							}
-							proceso.Nombre = "[DELETED] " + proceso.Nombre
+							if !strings.Contains(proceso.Nombre, "[DELETED]") {
+								proceso.Nombre = "[DELETED] " + proceso.Nombre
+							}
 							if proceso.Alias == "" {
 								proceso.Alias = proceso.Nombre
 							} else {
-								proceso.Alias = "[DELETED] " + proceso.Alias
+								if !strings.Contains(proceso.Alias, "[DELETED]") {
+									proceso.Alias = "[DELETED] " + proceso.Alias
+								}
 							}
 							H.Db.Save(proceso)
 						}
