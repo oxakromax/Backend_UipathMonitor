@@ -1,14 +1,16 @@
 package Server
 
 import (
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/oxakromax/Backend_UipathMonitor/ORM"
 	"github.com/oxakromax/Backend_UipathMonitor/functions"
 
-	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 func (H *Handler) GetUsers(c echo.Context) error {
@@ -336,8 +338,27 @@ func (H *Handler) UpdateUser(c echo.Context) error {
 }
 
 func (H *Handler) GetAllRoles(c echo.Context) error {
+	// Get user from token
+	UserID := uint(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
+	User := new(ORM.Usuario)
+	User.Get(H.Db, UserID)
 	// Obtener los roles de la base de datos
 	Roles := new([]*ORM.Rol)
 	H.Db.Order("Nombre").Find(&Roles)
+	// Si el usuario no es admin eliminar los roles de admin
+	// además siempre eliminar el rol de monitor
+	// para verificar usa User.HasRole("admin")
+
+	FinalRoles := make([]*ORM.Rol, 0)
+	for _, role := range *Roles {
+		if role.Nombre != "admin" && role.Nombre != "monitor" {
+			FinalRoles = append(FinalRoles, role)
+		}
+		if role.Nombre == "admin" && User.HasRole("admin") {
+			FinalRoles = append(FinalRoles, role)
+		}
+	}
+	Roles = &FinalRoles
+
 	return c.JSON(http.StatusOK, Roles)
 }

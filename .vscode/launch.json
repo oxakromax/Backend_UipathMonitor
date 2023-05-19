@@ -11,7 +11,14 @@
             "mode": "auto",
             "program": "${fileDirname}",
             "env": {
-                "DB_KEY": "22d89667b85011d157292c03580db4c2"
+                "DB_KEY": "22d89667b85011d157292c03580db4c2",
+                "DB_NAME": "Proyecto",
+                "DB_HOST": "localhost",
+                "DB_PORT": "5432",
+                "DB_USER": "postgres",
+                "DB_PASSWORD": "Nh52895390",
+                "MONITOR_PASS": "234sdfds1",
+                "MONITOR_USER": "monitor@localhost.com"
             }
         }
     ]

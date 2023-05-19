@@ -1,6 +1,7 @@
 package Server
 
 import (
+	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
@@ -246,6 +247,7 @@ func (H *Handler) PostIncidentDetails(c echo.Context) error {
 	Incident := new(ORM.IncidenteProceso)
 	IncidentID, _ := strconv.Atoi(c.FormValue("incidentID"))
 	Incident.Get(H.Db, uint(IncidentID))
+	OldState := Incident.Estado
 	if Incident.ID == 0 {
 		return c.JSON(http.StatusNotFound, "Incident not found")
 	}
@@ -305,6 +307,15 @@ func (H *Handler) PostIncidentDetails(c echo.Context) error {
 	Incident.Estado = IncidentState
 	Incident.Detalles = append(Incident.Detalles, IncidentDetail)
 	H.Db.Save(Incident)
+	if Incident.Estado != OldState {
+		// Enviar notificación a los usuarios del proceso
+		go func() {
+			// Se debe de redactar un correo con el ID del ticket, el nombre del proceso, el nuevo estado
+			body := fmt.Sprintf("El incidente %d del proceso %s ha cambiado de estado a %s.\n\n Esta es una notificación automática. Por favor, no responda.", Incident.ID, Process.Nombre, Incident.GetTipo())
+			subject := fmt.Sprintf("Cambió el estado del incidente %d del proceso %s", Incident.ID, Process.Nombre)
+			functions.SendMail(Process.GetEmails(), subject, body)
+		}()
+	}
 	return c.JSON(http.StatusOK, Incident)
 }
 
@@ -321,7 +332,7 @@ func (H *Handler) NewIncident(c echo.Context) error {
 	User.Get(H.Db, UserID)
 	HasProcess := User.HasProcess(ProcessID)
 	HasRole := User.HasRole("processes_administration")
-	if !HasProcess && !HasRole {
+	if !HasProcess && !HasRole && !User.HasRole("monitor") {
 		return c.JSON(403, "Forbidden")
 	}
 	var Process ORM.Proceso
@@ -371,5 +382,20 @@ func (H *Handler) NewIncident(c echo.Context) error {
 		Process.ActiveMonitoring = false
 		H.Db.Save(Process)
 	}
+	go func() {
+		// Send the notification to the users
+		Emails := Process.GetEmails()
+		// Send the email to the users
+		body := "Se ha creado un nuevo Ticket de tipo " + Incident.GetTipo() + " en el proceso " + Process.Nombre + " con ID " + strconv.Itoa(int(Incident.ID)) + ".\n\n" +
+			"Para ver el ticket, ingrese a la plataforma de monitoreo de procesos." +
+			"\n\n" +
+			"Este es un mensaje automático, por favor no responda a este correo."
+		subject := "Nuevo Ticket en el proceso " + Process.Nombre
+		err := functions.SendMail(Emails, subject, body)
+		if err != nil {
+			fmt.Println("Error sending email: ", err)
+		}
+
+	}()
 	return c.JSON(200, Incident)
 }

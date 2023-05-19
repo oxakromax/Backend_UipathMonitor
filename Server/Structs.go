@@ -1,13 +1,15 @@
 package Server
 
 import (
+	"net/http"
+	"os"
+	"strings"
+
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/oxakromax/Backend_UipathMonitor/ORM"
 	"github.com/oxakromax/Backend_UipathMonitor/functions"
 	"gorm.io/gorm"
-	"net/http"
-	"strings"
 )
 
 type Handler struct {
@@ -144,6 +146,15 @@ func (H *Handler) RefreshDataBase(e *echo.Echo) {
 		}
 		H.Db.Create(&processesAdministrationRole)
 	}
+	monitorRole := new(ORM.Rol)
+	H.Db.Where("nombre = ?", "monitor").First(&monitorRole)
+	if monitorRole.ID == 0 {
+		monitorRole = &ORM.Rol{
+			Nombre:      "monitor",
+			Description: "",
+		}
+		H.Db.Create(&monitorRole)
+	}
 
 	for _, route := range *routes {
 		if strings.Contains(route.Route, "/admin/organization") {
@@ -158,11 +169,34 @@ func (H *Handler) RefreshDataBase(e *echo.Echo) {
 		if strings.HasPrefix(route.Route, "/admin/processes") {
 			processesAdministrationRole.Rutas = append(processesAdministrationRole.Rutas, route)
 		}
+		if strings.HasPrefix(route.Route, "/monitor") {
+			monitorRole.Rutas = append(monitorRole.Rutas, route)
+		}
 	}
 	_ = H.Db.Model(&organizationRole).Association("Rutas").Replace(organizationRole.Rutas)
 	_ = H.Db.Model(&userRole).Association("Rutas").Replace(userRole.Rutas)
 	_ = H.Db.Model(&userAdministrationRole).Association("Rutas").Replace(userAdministrationRole.Rutas)
 	_ = H.Db.Model(&processesAdministrationRole).Association("Rutas").Replace(processesAdministrationRole.Rutas)
+	_ = H.Db.Model(&monitorRole).Association("Rutas").Replace(monitorRole.Rutas)
+	// Crear usuario monitor, sino existe, sobre escribir contraseña
+	monitorUser := new(ORM.Usuario)
+	Username := os.Getenv("MONITOR_USER")
+	Password := os.Getenv("MONITOR_PASS")
+	H.Db.Where("email = ?", Username).First(&monitorUser)
+	if monitorUser.ID == 0 {
+		monitorUser = &ORM.Usuario{
+			Email:    Username,
+			Nombre:   "Monitor de procesos",
+			Apellido: "",
+		}
+		monitorUser.SetPassword(Password)
+		H.Db.Create(&monitorUser)
+		_ = H.Db.Model(&monitorUser).Association("Roles").Replace([]ORM.Rol{*monitorRole})
+	} else {
+		monitorUser.SetPassword(Password)
+		H.Db.Save(&monitorUser)
+	}
+
 }
 
 func (H *Handler) PingAuth(c echo.Context) error {

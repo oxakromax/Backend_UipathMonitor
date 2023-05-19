@@ -18,7 +18,15 @@ import (
 )
 
 func OpenDB() *gorm.DB {
-	dsn := "host=localhost user=postgres password=Nh52895390 dbname=Proyecto port=5432 sslmode=disable"
+	Host := os.Getenv("DB_HOST")
+	User := os.Getenv("DB_USER")
+	Password := os.Getenv("DB_PASSWORD")
+	Database := os.Getenv("DB_NAME")
+	Port := os.Getenv("DB_PORT")
+	if Host == "" {
+		Host = "localhost"
+	}
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable", Host, User, Password, Database, Port)
 	log := logger.Default.LogMode(logger.Info)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: log,
@@ -41,7 +49,7 @@ func main() {
 		Db:                  OpenDB(),
 		TokenKey:            functions.GeneratePassword(32),
 		UniversalRoutes:     []string{"/auth", "/forgot"},
-		UserUniversalRoutes: []string{"/user/profile"},
+		UserUniversalRoutes: []string{"/user/profile", "/pingAuth"},
 		DbKey:               os.Getenv("DB_KEY"),
 	}
 	if H.DbKey == "" {
@@ -102,6 +110,9 @@ func main() {
 	e.GET("/user/processes/:id/possibleUsers", H.GetPossibleUsers)
 	e.GET("/user/processes/:id/possibleClients", H.GetPossibleClients)
 	e.POST("/user/processes/:id/newIncident", H.NewIncident)
+	e.POST("/monitor/:id/newIncident", H.NewIncident)
+	e.PATCH("/monitor/RefreshOrgs", H.UpdateUipathProcess)
+	e.GET("/monitor/Orgs", H.GetOrgs)
 	H.RefreshDataBase(e)
 	var err error
 	// listener, err := localtunnel.Listen(localtunnel.Options{

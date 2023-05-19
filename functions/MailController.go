@@ -1,8 +1,9 @@
 package functions
 
 import (
-	"gopkg.in/gomail.v2"
 	"strings"
+
+	"gopkg.in/gomail.v2"
 )
 
 func SendMail(to []string, subject string, body string) error {
@@ -14,7 +15,7 @@ func SendMail(to []string, subject string, body string) error {
 	// uses GoMail
 	m := gomail.NewMessage()
 	m.SetHeader("From", from)
-	m.SetHeader("To", strings.Join(removeDuplicates(to), ","))
+	m.SetHeader("Bcc", strings.Join(removeDuplicates(to), ","))
 	m.SetHeader("Subject", subject)
 	m.SetBody("text/html", body)
 	d := gomail.NewDialer(smtpServer, smtpPort, from, password)
