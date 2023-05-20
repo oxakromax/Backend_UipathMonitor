@@ -292,7 +292,7 @@ func (H *Handler) PostIncidentDetails(c echo.Context) error {
 	}
 	// Verificar que la fecha de inicio sea mayor a la fecha del último detalle
 	if len(Incident.Detalles) > 0 {
-		if IncidentDetailStartDate.After(Incident.Detalles[len(Incident.Detalles)-1].FechaInicio) {
+		if IncidentDetailStartDate.Before(Incident.Detalles[len(Incident.Detalles)-1].FechaInicio) {
 			return c.JSON(http.StatusBadRequest, "Start date must be greater than last detail start date")
 		}
 	}

@@ -41,7 +41,7 @@ func (H *Handler) UpdateUipathProcess(c echo.Context) error {
 						exists := false
 						H.Db.Find(proceso)
 						for _, Process := range ProcessUipath.Value {
-							if Process.Id == int(proceso.UipathProcessID) {
+							if Process.ID == int(proceso.UipathProcessID) {
 								exists = true
 								modified := false
 								if proceso.Nombre != Process.Name {
@@ -90,7 +90,7 @@ func (H *Handler) UpdateUipathProcess(c echo.Context) error {
 				Folders := FolderIter
 				go func() {
 					Processes := new(UipathAPI.ReleasesResponse)
-					err = Org.GetFromApi(Processes, Folders.Id)
+					err = Org.GetFromApi(Processes, Folders.ID)
 					if err != nil {
 						errorChannel <- err
 						SubWg.Done()
@@ -98,12 +98,12 @@ func (H *Handler) UpdateUipathProcess(c echo.Context) error {
 					}
 					for _, Process := range Processes.Value {
 						ORMProcess := new(ORM.Proceso)
-						H.Db.Where("folderid = ? AND uipath_process_iD = ?", Folders.Id, Process.Id).First(ORMProcess)
+						H.Db.Where("folderid = ? AND uipath_process_iD = ?", Folders.ID, Process.ID).First(ORMProcess)
 						if ORMProcess.ID == 0 {
 							ORMProcess = &ORM.Proceso{
 								Nombre:           Process.Name,
-								UipathProcessID:  uint(Process.Id),
-								Folderid:         uint(Folders.Id),
+								UipathProcessID:  uint(Process.ID),
+								Folderid:         uint(Folders.ID),
 								Foldername:       Folders.DisplayName,
 								OrganizacionID:   Org.ID,
 								WarningTolerance: 999,
