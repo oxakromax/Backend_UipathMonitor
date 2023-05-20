@@ -356,8 +356,19 @@ func (H *Handler) NewIncident(c echo.Context) error {
 
 	Incident.ProcesoID = Process.ID
 	Incident.Proceso = &Process
+	if len(Incident.Detalles) != 0 {
+		for _, detail := range Incident.Detalles {
+			detail.UsuarioID = int(User.ID)
+		}
+	}
+
 	// Create the incident to retrieve the ID
 	H.Db.Create(Incident)
+
+	if Incident.Tipo == 1 {
+		Process.ActiveMonitoring = false
+		H.Db.Save(&Process)
+	}
 	// Check if there's a Detail in the incident
 	if len(Incident.Detalles) == 0 {
 		DefaultDetail := new(ORM.IncidentesDetalle)
@@ -367,35 +378,20 @@ func (H *Handler) NewIncident(c echo.Context) error {
 		DefaultDetail.IncidenteID = int(Incident.ID)
 		DefaultDetail.UsuarioID = int(User.ID)
 		H.Db.Create(DefaultDetail)
-	} else {
-		for i := 0; i < len(Incident.Detalles); i++ {
-			Incident.Detalles[i].IncidenteID = int(Incident.ID)
-			Incident.Detalles[i].UsuarioID = int(User.ID)
-			// Fechas
-			Incident.Detalles[i].FechaInicio = time.Now()
-			Incident.Detalles[i].FechaFin = time.Now()
-			H.Db.Create(Incident.Detalles[i])
-		}
 	}
 
-	if Incident.Tipo == 1 {
-		Process.ActiveMonitoring = false
-		H.Db.Save(Process)
+	// Send the notification to the users
+	Emails := Process.GetEmails()
+	// Send the email to the users
+	body := "Se ha creado un nuevo Ticket de tipo " + Incident.GetTipo() + " en el proceso " + Process.Nombre + " con ID " + strconv.Itoa(int(Incident.ID)) + ".\n\n" +
+		"Para ver el ticket, ingrese a la plataforma de monitoreo de procesos." +
+		"\n\n" +
+		"Este es un mensaje automático, por favor no responda a este correo."
+	subject := "Nuevo Ticket en el proceso " + Process.Nombre
+	err = functions.SendMail(Emails, subject, body)
+	if err != nil {
+		return c.JSON(500, "Error sending email")
 	}
-	go func() {
-		// Send the notification to the users
-		Emails := Process.GetEmails()
-		// Send the email to the users
-		body := "Se ha creado un nuevo Ticket de tipo " + Incident.GetTipo() + " en el proceso " + Process.Nombre + " con ID " + strconv.Itoa(int(Incident.ID)) + ".\n\n" +
-			"Para ver el ticket, ingrese a la plataforma de monitoreo de procesos." +
-			"\n\n" +
-			"Este es un mensaje automático, por favor no responda a este correo."
-		subject := "Nuevo Ticket en el proceso " + Process.Nombre
-		err := functions.SendMail(Emails, subject, body)
-		if err != nil {
-			fmt.Println("Error sending email: ", err)
-		}
 
-	}()
 	return c.JSON(200, Incident)
 }

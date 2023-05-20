@@ -7,6 +7,9 @@ import (
 )
 
 func SendMail(to []string, subject string, body string) error {
+	if len(to) == 0 {
+		return nil
+	}
 	// Set up authentication information.
 	from := "monitordeprocesos@outlook.com"
 	password := "Monitor123!"
@@ -15,7 +18,7 @@ func SendMail(to []string, subject string, body string) error {
 	// uses GoMail
 	m := gomail.NewMessage()
 	m.SetHeader("From", from)
-	m.SetHeader("Bcc", strings.Join(removeDuplicates(to), ","))
+	m.SetHeader("To", strings.Join(removeDuplicates(to), ","))
 	m.SetHeader("Subject", subject)
 	m.SetBody("text/html", body)
 	d := gomail.NewDialer(smtpServer, smtpPort, from, password)
