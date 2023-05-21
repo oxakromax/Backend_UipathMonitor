@@ -60,6 +60,11 @@ func main() {
 	}
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete},
+		AllowHeaders: []string{echo.HeaderAuthorization, echo.HeaderContentType, echo.HeaderAccept},
+	}))
 	e.Use(echojwt.WithConfig(echojwt.Config{
 		SigningKey:    []byte(H.TokenKey),
 		SigningMethod: "HS512",

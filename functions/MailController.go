@@ -18,7 +18,7 @@ func SendMail(to []string, subject string, body string) error {
 	// uses GoMail
 	m := gomail.NewMessage()
 	m.SetHeader("From", from)
-	m.SetHeader("To", strings.Join(removeDuplicates(to), ","))
+	m.SetHeader("To", removeDuplicates(to)...)
 	m.SetHeader("Subject", subject)
 	m.SetBody("text/html", body)
 	d := gomail.NewDialer(smtpServer, smtpPort, from, password)
@@ -35,7 +35,7 @@ func removeDuplicates(to []string) []string {
 	for _, entry := range to {
 		if _, value := keys[entry]; !value {
 			keys[entry] = true
-			list = append(list, entry)
+			list = append(list, strings.TrimSpace(entry))
 		}
 	}
 	return list
