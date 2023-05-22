@@ -6,16 +6,16 @@ import (
 	"gorm.io/gorm"
 )
 
-type IncidentesDetalle struct {
+type TicketsDetalle struct {
 	gorm.Model
 	IncidenteID int       `gorm:"not null"`
-	Detalle     string    `gorm:"type:text"`
+	Detalle     string    `gorm:"type:text" json:"Detalle"`
 	FechaInicio time.Time `gorm:"precision:6"`
 	FechaFin    time.Time `gorm:"precision:6"`
 	UsuarioID   int       `gorm:"not null"`
 }
 
 // TableName TableName IncidentesDetalles Tablename: incidentes_detalle
-func (IncidentesDetalle) TableName() string {
-	return "incidentes_detalle"
+func (TicketsDetalle) TableName() string {
+	return "tickets_detalle"
 }

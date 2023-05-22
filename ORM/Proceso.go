@@ -6,20 +6,20 @@ import (
 
 type Proceso struct {
 	gorm.Model
-	Nombre            string              `gorm:"not null"`
-	Alias             string              `gorm:"not null,default:''"`
-	UipathProcessID   uint                `gorm:"not null,default:0"`
-	Folderid          uint                `gorm:"not null"`
-	Foldername        string              `gorm:"not null,default:''"`
-	OrganizacionID    uint                `gorm:"not null"`
-	WarningTolerance  int                 `gorm:"not null;default:10"`
-	ErrorTolerance    int                 `gorm:"not null;default:0"`
-	FatalTolerance    int                 `gorm:"not null;default:0"`
-	ActiveMonitoring  bool                `gorm:"not null;default:false"`
-	Organizacion      *Organizacion       `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
-	IncidentesProceso []*IncidenteProceso `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
-	Clientes          []*Cliente          `gorm:"many2many:procesos_clientes;"`
-	Usuarios          []*Usuario          `gorm:"many2many:procesos_usuarios;"`
+	Nombre            string            `gorm:"not null"`
+	Alias             string            `gorm:"not null,default:''"`
+	UipathProcessID   uint              `gorm:"not null,default:0"`
+	Folderid          uint              `gorm:"not null"`
+	Foldername        string            `gorm:"not null,default:''"`
+	OrganizacionID    uint              `gorm:"not null"`
+	WarningTolerance  int               `gorm:"not null;default:10"`
+	ErrorTolerance    int               `gorm:"not null;default:0"`
+	FatalTolerance    int               `gorm:"not null;default:0"`
+	ActiveMonitoring  bool              `gorm:"not null;default:false"`
+	Organizacion      *Organizacion     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
+	IncidentesProceso []*TicketsProceso `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
+	Clientes          []*Cliente        `gorm:"many2many:procesos_clientes;"`
+	Usuarios          []*Usuario        `gorm:"many2many:procesos_usuarios;"`
 }
 
 func (Proceso) TableName() string {

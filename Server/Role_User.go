@@ -204,9 +204,9 @@ func (H *Handler) GetUserIncidents(c echo.Context) error {
 
 	for _, process := range procesosWithIncidents {
 		ProcessWithOnGoingIncidents := *process
-		ProcessWithOnGoingIncidents.IncidentesProceso = make([]*ORM.IncidenteProceso, 0)
+		ProcessWithOnGoingIncidents.IncidentesProceso = make([]*ORM.TicketsProceso, 0)
 		ProcessWithoutIncidents := *process
-		ProcessWithoutIncidents.IncidentesProceso = make([]*ORM.IncidenteProceso, 0)
+		ProcessWithoutIncidents.IncidentesProceso = make([]*ORM.TicketsProceso, 0)
 		for _, incidentes := range process.IncidentesProceso {
 			if incidentes.Estado != 3 {
 				ProcessWithOnGoingIncidents.IncidentesProceso = append(ProcessWithOnGoingIncidents.IncidentesProceso, incidentes)
@@ -245,7 +245,7 @@ func (H *Handler) PostIncidentDetails(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, "User not found")
 	}
 	// Obtener el incidente de la base de datos
-	Incident := new(ORM.IncidenteProceso)
+	Incident := new(ORM.TicketsProceso)
 	IncidentID, _ := strconv.Atoi(c.FormValue("incidentID"))
 	Incident.Get(H.Db, uint(IncidentID))
 	OldState := Incident.Estado
@@ -291,14 +291,11 @@ func (H *Handler) PostIncidentDetails(c echo.Context) error {
 	if IncidentDetailEndDate.Before(IncidentDetailStartDate) {
 		return c.JSON(http.StatusBadRequest, "End date must be greater than start date")
 	}
-	// Verificar que la fecha de inicio sea mayor a la fecha del último detalle
-	if len(Incident.Detalles) > 0 {
-		if IncidentDetailStartDate.Before(Incident.Detalles[len(Incident.Detalles)-1].FechaInicio) {
-			return c.JSON(http.StatusBadRequest, "Start date must be greater than last detail start date")
-		}
-	}
+	// Se omite la validación horaria entre la fecha de ultimo detalle, debido a que existe la posibilidad de que el usuario este en otra zona horaria
+	// y esto es disruptivo al trabajar con dart y tener un servidor en una ubicación distinta
+
 	// Crear el detalle del incidente
-	IncidentDetail := &ORM.IncidentesDetalle{
+	IncidentDetail := &ORM.TicketsDetalle{
 		IncidenteID: int(Incident.ID),
 		Detalle:     c.FormValue("details"),
 		FechaInicio: IncidentDetailStartDate,
@@ -347,7 +344,7 @@ func (H *Handler) NewIncident(c echo.Context) error {
 		return c.JSON(404, "Process not found")
 	}
 	// Get the incident data from the request
-	Incident := new(ORM.IncidenteProceso)
+	Incident := new(ORM.TicketsProceso)
 	err = c.Bind(Incident)
 	if err != nil {
 		return c.JSON(400, "Invalid incident data")
@@ -364,8 +361,8 @@ func (H *Handler) NewIncident(c echo.Context) error {
 	if len(Incident.Detalles) != 0 {
 		for _, detail := range Incident.Detalles {
 			detail.UsuarioID = int(User.ID)
-			detail.FechaInicio = time.Now()
-			detail.FechaFin = time.Now()
+			detail.FechaInicio = time.Now().UTC()
+			detail.FechaFin = time.Now().UTC()
 		}
 	}
 
@@ -378,9 +375,9 @@ func (H *Handler) NewIncident(c echo.Context) error {
 	}
 	// Check if there's a Detail in the incident
 	if len(Incident.Detalles) == 0 {
-		DefaultDetail := new(ORM.IncidentesDetalle)
-		DefaultDetail.FechaInicio = time.Now()
-		DefaultDetail.FechaFin = time.Now()
+		DefaultDetail := new(ORM.TicketsDetalle)
+		DefaultDetail.FechaInicio = time.Now().UTC()
+		DefaultDetail.FechaFin = time.Now().UTC()
 		DefaultDetail.Detalle = "Evento creado por el usuario " + User.Nombre + " " + User.Apellido
 		DefaultDetail.IncidenteID = int(Incident.ID)
 		DefaultDetail.UsuarioID = int(User.ID)
@@ -394,7 +391,7 @@ func (H *Handler) NewIncident(c echo.Context) error {
 		ID:            int(Incident.ID),
 		NombreProceso: Process.Nombre,
 		Tipo:          Incident.GetTipo(),
-		Descripcion:   Incident.Incidente,
+		Descripcion:   Incident.Descripcion,
 	})
 	subject := "Nuevo Ticket en el proceso " + Process.Nombre
 	err = functions.SendMail(Emails, subject, body)

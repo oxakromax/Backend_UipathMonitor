@@ -7,14 +7,14 @@ import (
 
 type Usuario struct {
 	gorm.Model
-	Nombre             string               `gorm:"not null"`
-	Apellido           string               `gorm:"not null"`
-	Email              string               `gorm:"not null"`
-	Password           string               `gorm:"not null"`
-	Roles              []*Rol               `gorm:"many2many:usuarios_roles;"`
-	Procesos           []*Proceso           `gorm:"many2many:procesos_usuarios;"`
-	Organizaciones     []*Organizacion      `gorm:"many2many:usuarios_organizaciones;"`
-	Incidentes_Detalle []*IncidentesDetalle `gorm:"foreignKey:UsuarioID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
+	Nombre             string            `gorm:"not null"`
+	Apellido           string            `gorm:"not null"`
+	Email              string            `gorm:"not null"`
+	Password           string            `gorm:"not null"`
+	Roles              []*Rol            `gorm:"many2many:usuarios_roles;"`
+	Procesos           []*Proceso        `gorm:"many2many:procesos_usuarios;"`
+	Organizaciones     []*Organizacion   `gorm:"many2many:usuarios_organizaciones;"`
+	Incidentes_Detalle []*TicketsDetalle `gorm:"foreignKey:UsuarioID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
 }
 
 func (this *Usuario) GetAdmins(db *gorm.DB) []*Usuario {

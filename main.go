@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
@@ -30,12 +31,15 @@ func OpenDB() *gorm.DB {
 	log := logger.Default.LogMode(logger.Info)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: log,
+		NowFunc: func() time.Time {
+			return time.Now().Local()
+		},
 	})
 	db.Logger.Info(nil, "Database connection successfully opened")
 	if err != nil {
 		panic("failed to connect database")
 	}
-	err = db.AutoMigrate(&ORM.Organizacion{}, &ORM.Cliente{}, &ORM.Proceso{}, &ORM.IncidenteProceso{}, &ORM.IncidentesDetalle{}, &ORM.Usuario{}, &ORM.Rol{},
+	err = db.AutoMigrate(&ORM.Organizacion{}, &ORM.Cliente{}, &ORM.Proceso{}, &ORM.TicketsProceso{}, &ORM.TicketsDetalle{}, &ORM.Usuario{}, &ORM.Rol{},
 		&ORM.Route{})
 	if err != nil {
 		panic("failed to migrate database")
