@@ -1,8 +1,11 @@
 package Server
 
 import (
+	"os"
+
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/labstack/echo/v4"
+	"github.com/oxakromax/Backend_UipathMonitor/Mail"
 	"github.com/oxakromax/Backend_UipathMonitor/ORM"
 	"github.com/oxakromax/Backend_UipathMonitor/functions"
 
@@ -252,6 +255,14 @@ func (H *Handler) GetUsers(c echo.Context) error {
 
 	}
 
+	// Remueve al usuario monitor de la lista
+	for i, user := range Users {
+		if user.Email == os.Getenv("MONITOR_USER") {
+			Users = append(Users[:i], Users[i+1:]...)
+			break
+		}
+	}
+
 	return c.JSON(http.StatusOK, Users)
 }
 func (H *Handler) DeleteUser(c echo.Context) error {
@@ -294,7 +305,7 @@ func (H *Handler) CreateUser(c echo.Context) error {
 	H.Db.Where("nombre = ?", "user").First(&rol)
 	User.Roles = append(User.Roles, rol)
 	// Enviar la contraseña al correo del usuario
-	err = functions.SendMail([]string{User.Email}, "Welcome to Uipath Monitor", "Your password is: "+User.Password)
+	err = functions.SendMail([]string{User.Email}, "Bienvenido a Uipath Monitor", Mail.GetBodyNewUser(Mail.NewUser{Nombre: User.Nombre, Email: User.Email, Password: User.Password}))
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, "Error while sending email")
 	}
@@ -351,7 +362,7 @@ func (H *Handler) GetAllRoles(c echo.Context) error {
 
 	FinalRoles := make([]*ORM.Rol, 0)
 	for _, role := range *Roles {
-		if role.Nombre != "admin" && role.Nombre != "monitor" {
+		if role.Nombre != "admin" && role.Nombre != "monitor" && role.Nombre != "user" {
 			FinalRoles = append(FinalRoles, role)
 		}
 		if role.Nombre == "admin" && User.HasRole("admin") {

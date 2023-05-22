@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link rel="stylesheet" type="text/css" href="styles.css">
+</head>
+<body>
+	<h1>Bienvenido a Uipath Monitor</h1>
+    <p>{{.Nombre}} Te damos la bienvenida a Uipath Monitor, la herramienta que te permitirá monitorear el estado de tus procesos de Uipath.</p>
+    <p>Tu usuario es <strong>{{.Email}}</strong></p>
+    <p>Tu contraseña es: <strong>{{.Password}}</strong></p>
+    <p>Recuerda que puedes cambiar tu contraseña al iniciar sesión en la aplicación</p>
+	<p>¡Gracias por registrarte!</p>
+	<p>Por favor, mantén esta información de manera segura y no la compartas con nadie.</p>
+	<p class="footer">
+		Este mensaje ha sido generado automáticamente.
+		<br>
+		<img src="data:image/png;base64, {{.LogoBase64}}" alt="Logo de la compañía" class="logo">
+	</p>
+</body>
+</html>

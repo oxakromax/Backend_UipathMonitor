@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" type="text/css" href="styles.css">
+</head>
+<body>
+    <!-- Usar type NewIncident struct {
+	ID            int
+	NombreProceso string
+    Descripcion   string
+	Tipo          string
+    } -->
+    <h1>Nuevo incidente en proceso {{.NombreProceso}}</h1>
+	<p>Estimado usuario</p>
+    <p>Se ha generado un nuevo ticket con ID: <span class="incident-details">{{.ID}}</span>
+		<br>Perteneciente al proceso: "<span class="incident-details">{{.NombreProceso}}</span>"
+		<br>Con tipo: "<span class="incident-details">{{.Tipo}}</span>".</p>
+        <br>La descripción del ticket es: <br>"<span class="incident-details">{{.Descripcion}}</span>".</p>
+    <p>Para ver los detalles del incidente, por favor utilice la aplicación.</p>
+	<p>¡Gracias por utilizar Uipath Monitor!</p>
+	<p>Por favor, mantenga esta información de manera segura y no la comparta con nadie.</p>
+    <p class="footer">
+        Esta es una notificación automática.
+		<br>Por favor, no responda este mensaje
+        <br>
+        <img src="data:image/png;base64, {{.LogoBase64}}" alt="Logo de la compañía" class="logo">
+    </p>
+    
+</body>
+</html>

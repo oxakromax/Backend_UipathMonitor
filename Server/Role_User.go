@@ -9,6 +9,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/labstack/echo/v4"
+	"github.com/oxakromax/Backend_UipathMonitor/Mail"
 	"github.com/oxakromax/Backend_UipathMonitor/ORM"
 	"github.com/oxakromax/Backend_UipathMonitor/functions"
 )
@@ -57,7 +58,7 @@ func (H *Handler) ForgotPassword(c echo.Context) error {
 	newPassword := functions.GeneratePassword(16)
 	// Enviar un correo electrónico al usuario con la nueva contraseña
 	Asunto := "Restablecimiento de contraseña ProcessMonitor"
-	Cuerpo := "Su nueva contraseña es: " + newPassword
+	Cuerpo := Mail.GetBodyNewPassword(Mail.NewPassword{Nombre: user.Nombre + " " + user.Apellido, Password: newPassword})
 	err := functions.SendMail([]string{email}, Asunto, Cuerpo)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, "Error sending email")
@@ -311,8 +312,12 @@ func (H *Handler) PostIncidentDetails(c echo.Context) error {
 		// Enviar notificación a los usuarios del proceso
 		go func() {
 			// Se debe de redactar un correo con el ID del ticket, el nombre del proceso, el nuevo estado
-			body := fmt.Sprintf("El incidente %d del proceso %s ha cambiado de estado a %s.\n\n Esta es una notificación automática. Por favor, no responda.", Incident.ID, Process.Nombre, Incident.GetTipo())
-			subject := fmt.Sprintf("Cambió el estado del incidente %d del proceso %s", Incident.ID, Process.Nombre)
+			body := Mail.GetBodyIncidentChange(Mail.IncidentChange{
+				ID:            int(Incident.ID),
+				NombreProceso: Process.Nombre,
+				NuevoEstado:   Incident.GetEstado(),
+			})
+			subject := fmt.Sprintf("Cambió de estado en incidente %d de proceso %s", Incident.ID, Process.Nombre)
 			functions.SendMail(Process.GetEmails(), subject, body)
 		}()
 	}
@@ -359,6 +364,8 @@ func (H *Handler) NewIncident(c echo.Context) error {
 	if len(Incident.Detalles) != 0 {
 		for _, detail := range Incident.Detalles {
 			detail.UsuarioID = int(User.ID)
+			detail.FechaInicio = time.Now()
+			detail.FechaFin = time.Now()
 		}
 	}
 
@@ -383,10 +390,12 @@ func (H *Handler) NewIncident(c echo.Context) error {
 	// Send the notification to the users
 	Emails := Process.GetEmails()
 	// Send the email to the users
-	body := "Se ha creado un nuevo Ticket de tipo " + Incident.GetTipo() + " en el proceso " + Process.Nombre + " con ID " + strconv.Itoa(int(Incident.ID)) + ".\n\n" +
-		"Para ver el ticket, ingrese a la plataforma de monitoreo de procesos." +
-		"\n\n" +
-		"Este es un mensaje automático, por favor no responda a este correo."
+	body := Mail.GetBodyNewIncident(Mail.NewIncident{
+		ID:            int(Incident.ID),
+		NombreProceso: Process.Nombre,
+		Tipo:          Incident.GetTipo(),
+		Descripcion:   Incident.Incidente,
+	})
 	subject := "Nuevo Ticket en el proceso " + Process.Nombre
 	err = functions.SendMail(Emails, subject, body)
 	if err != nil {
