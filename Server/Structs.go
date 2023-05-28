@@ -151,7 +151,7 @@ func (H *Handler) RefreshDataBase(e *echo.Echo) {
 	if monitorRole.ID == 0 {
 		monitorRole = &ORM.Rol{
 			Nombre:      "monitor",
-			Description: "",
+			Description: "El rol de monitor es un rol privado del sistema, el cual permite a un servicio externo acceder a las rutas de monitorización del sistema.",
 		}
 		H.Db.Create(&monitorRole)
 	}

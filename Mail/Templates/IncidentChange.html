@@ -1,10 +1,39 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <link rel="stylesheet" type="text/css" href="styles.css">
+    <meta charset="utf-8">
+    <title>Actualización de estado en Ticket: {{.ID}}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 11px;
+        }
+
+        h1 {
+            font-size: 20px;
+            color: #333;
+        }
+
+        p {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .footer {
+            font-size: 12px;
+            color: #999;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .logo {
+            max-width: 100px;
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Actualización del Estado del Ticket</h1>
+    <h1>Actualización de estado en Ticket: {{.ID}}</h1>
 	<p>Estimado usuario</p>
     <p>El incidente con ID: <span class="incident-details">{{.ID}}</span>
 		<br>Perteneciente al proceso: "<span class="incident-details">{{.NombreProceso}}</span>"

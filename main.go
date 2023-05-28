@@ -52,7 +52,7 @@ func main() {
 	H := &Server.Handler{
 		Db:                  OpenDB(),
 		TokenKey:            functions.GeneratePassword(32),
-		UniversalRoutes:     []string{"/auth", "/forgot"},
+		UniversalRoutes:     []string{"/auth", "/forgot", "/client/tickets"},
 		UserUniversalRoutes: []string{"/user/profile", "/pingAuth"},
 		DbKey:               os.Getenv("DB_KEY"),
 	}
@@ -63,7 +63,7 @@ func main() {
 		return
 	}
 	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
+	//e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete},
@@ -121,7 +121,9 @@ func main() {
 	e.POST("/user/processes/:id/newIncident", H.NewIncident)
 	e.POST("/monitor/:id/newIncident", H.NewIncident)
 	e.PATCH("/monitor/RefreshOrgs", H.UpdateUipathProcess)
+
 	e.GET("/monitor/Orgs", H.GetOrgs)
+	e.GET("/client/tickets", H.GetClientTicket)
 	H.RefreshDataBase(e)
 	var err error
 	// listener, err := localtunnel.Listen(localtunnel.Options{

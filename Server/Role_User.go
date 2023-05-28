@@ -196,7 +196,7 @@ func (H *Handler) GetUserIncidents(c echo.Context) error {
 		proceso.Organizacion.AppSecret = ""
 		proceso.Organizacion.AppID = ""
 		proceso.Organizacion.AppScope = ""
-		if proceso.IncidentesProceso != nil && len(proceso.IncidentesProceso) > 0 {
+		if proceso.TicketsProcesos != nil && len(proceso.TicketsProcesos) > 0 {
 			procesosWithIncidents = append(procesosWithIncidents, proceso)
 		}
 	}
@@ -204,14 +204,14 @@ func (H *Handler) GetUserIncidents(c echo.Context) error {
 
 	for _, process := range procesosWithIncidents {
 		ProcessWithOnGoingIncidents := *process
-		ProcessWithOnGoingIncidents.IncidentesProceso = make([]*ORM.TicketsProceso, 0)
+		ProcessWithOnGoingIncidents.TicketsProcesos = make([]*ORM.TicketsProceso, 0)
 		ProcessWithoutIncidents := *process
-		ProcessWithoutIncidents.IncidentesProceso = make([]*ORM.TicketsProceso, 0)
-		for _, incidentes := range process.IncidentesProceso {
+		ProcessWithoutIncidents.TicketsProcesos = make([]*ORM.TicketsProceso, 0)
+		for _, incidentes := range process.TicketsProcesos {
 			if incidentes.Estado != 3 {
-				ProcessWithOnGoingIncidents.IncidentesProceso = append(ProcessWithOnGoingIncidents.IncidentesProceso, incidentes)
+				ProcessWithOnGoingIncidents.TicketsProcesos = append(ProcessWithOnGoingIncidents.TicketsProcesos, incidentes)
 			} else {
-				ProcessWithoutIncidents.IncidentesProceso = append(ProcessWithoutIncidents.IncidentesProceso, incidentes)
+				ProcessWithoutIncidents.TicketsProcesos = append(ProcessWithoutIncidents.TicketsProcesos, incidentes)
 			}
 		}
 		returnJson["ongoing"] = append(returnJson["ongoing"], &ProcessWithOnGoingIncidents)
@@ -219,11 +219,11 @@ func (H *Handler) GetUserIncidents(c echo.Context) error {
 	}
 	// sort incidents inside process by incidentes.Detalles[0].FechaInicio
 	for _, process := range returnJson["ongoing"] {
-		sort.Slice(process.IncidentesProceso, func(i, j int) bool {
-			if len(process.IncidentesProceso[i].Detalles) == 0 || len(process.IncidentesProceso[j].Detalles) == 0 {
+		sort.Slice(process.TicketsProcesos, func(i, j int) bool {
+			if len(process.TicketsProcesos[i].Detalles) == 0 || len(process.TicketsProcesos[j].Detalles) == 0 {
 				return false
 			}
-			return process.IncidentesProceso[i].Detalles[0].FechaInicio.After(process.IncidentesProceso[j].Detalles[0].FechaInicio)
+			return process.TicketsProcesos[i].Detalles[0].FechaInicio.After(process.TicketsProcesos[j].Detalles[0].FechaInicio)
 		})
 	}
 	return c.JSON(http.StatusOK, returnJson)
@@ -350,7 +350,7 @@ func (H *Handler) NewIncident(c echo.Context) error {
 		return c.JSON(400, "Invalid incident data")
 	}
 	// Check if the process has incidents of the same type ongoing (not Estado 3)
-	for _, incident := range Process.IncidentesProceso {
+	for _, incident := range Process.TicketsProcesos {
 		if incident.Tipo == Incident.Tipo && incident.Estado != 3 {
 			return c.JSON(400, "Ya existe un incidente de este tipo en el proceso")
 		}

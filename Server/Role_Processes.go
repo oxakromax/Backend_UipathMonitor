@@ -33,8 +33,8 @@ func (H *Handler) GetProcess(c echo.Context) error {
 	User.Get(H.Db, UserID)
 	if User.HasRole("processes_administration") || User.HasProcess(ProcessID) {
 		Process.Get(H.Db, uint(ProcessID))
-		sort.Slice(Process.IncidentesProceso, func(i, j int) bool {
-			return Process.IncidentesProceso[i].ID > Process.IncidentesProceso[j].ID
+		sort.Slice(Process.TicketsProcesos, func(i, j int) bool {
+			return Process.TicketsProcesos[i].ID > Process.TicketsProcesos[j].ID
 		})
 		return c.JSON(200, Process)
 	}

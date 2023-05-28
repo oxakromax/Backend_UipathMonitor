@@ -8,6 +8,6 @@ import (
 // GetOrgs
 func (H *Handler) GetOrgs(c echo.Context) error {
 	var organizaciones []*ORM.Organizacion
-	H.Db.Preload("Procesos").Preload("Clientes").Preload("Usuarios").Preload("Procesos.IncidentesProceso").Find(&organizaciones)
+	H.Db.Preload("Procesos").Preload("Clientes").Preload("Usuarios").Preload("Procesos.TicketsProcesos").Find(&organizaciones)
 	return c.JSON(200, organizaciones)
 }

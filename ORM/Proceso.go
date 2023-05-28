@@ -6,20 +6,20 @@ import (
 
 type Proceso struct {
 	gorm.Model
-	Nombre            string            `gorm:"not null"`
-	Alias             string            `gorm:"not null,default:''"`
-	UipathProcessID   uint              `gorm:"not null,default:0"`
-	Folderid          uint              `gorm:"not null"`
-	Foldername        string            `gorm:"not null,default:''"`
-	OrganizacionID    uint              `gorm:"not null"`
-	WarningTolerance  int               `gorm:"not null;default:10"`
-	ErrorTolerance    int               `gorm:"not null;default:0"`
-	FatalTolerance    int               `gorm:"not null;default:0"`
-	ActiveMonitoring  bool              `gorm:"not null;default:false"`
-	Organizacion      *Organizacion     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
-	IncidentesProceso []*TicketsProceso `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
-	Clientes          []*Cliente        `gorm:"many2many:procesos_clientes;"`
-	Usuarios          []*Usuario        `gorm:"many2many:procesos_usuarios;"`
+	Nombre           string            `gorm:"not null"`
+	Alias            string            `gorm:"not null,default:''"`
+	UipathProcessID  uint              `gorm:"not null,default:0"`
+	Folderid         uint              `gorm:"not null"`
+	Foldername       string            `gorm:"not null,default:''"`
+	OrganizacionID   uint              `gorm:"not null"`
+	WarningTolerance int               `gorm:"not null;default:10"`
+	ErrorTolerance   int               `gorm:"not null;default:0"`
+	FatalTolerance   int               `gorm:"not null;default:0"`
+	ActiveMonitoring bool              `gorm:"not null;default:false"`
+	Organizacion     *Organizacion     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
+	TicketsProcesos  []*TicketsProceso `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;" json:"IncidentesProceso"`
+	Clientes         []*Cliente        `gorm:"many2many:procesos_clientes;"`
+	Usuarios         []*Usuario        `gorm:"many2many:procesos_usuarios;"`
 }
 
 func (Proceso) TableName() string {
@@ -28,23 +28,23 @@ func (Proceso) TableName() string {
 
 func (Proceso) GetAll(db *gorm.DB) []*Proceso {
 	var procesos []*Proceso
-	db.Preload("Organizacion").Preload("Organizacion.Clientes").Preload("Organizacion.Usuarios").Preload("IncidentesProceso").Preload("Clientes").Preload("Usuarios").Preload("IncidentesProceso.Detalles").Find(&procesos)
+	db.Preload("Organizacion").Preload("Organizacion.Clientes").Preload("Organizacion.Usuarios").Preload("TicketsProcesos").Preload("Clientes").Preload("Usuarios").Preload("TicketsProcesos.Detalles").Find(&procesos)
 	return procesos
 }
 
 func (this *Proceso) Get(db *gorm.DB, id uint) {
-	db.Preload("Organizacion").Preload("IncidentesProceso").Preload("Clientes").Preload("Usuarios").Preload("IncidentesProceso.Detalles").First(&this, id)
+	db.Preload("Organizacion").Preload("TicketsProcesos").Preload("Clientes").Preload("Usuarios").Preload("TicketsProcesos.Detalles").First(&this, id)
 }
 
 func (Proceso) GetByOrganizacion(db *gorm.DB, organizacionID uint) []*Proceso {
 	var procesos []*Proceso
-	db.Preload("Organizacion").Preload("IncidentesProceso").Preload("Clientes").Preload("Usuarios").Preload("IncidentesProceso.Detalles").Where("organizacion_id = ?", organizacionID).Find(&procesos)
+	db.Preload("Organizacion").Preload("TicketsProcesos").Preload("Clientes").Preload("Usuarios").Preload("TicketsProcesos.Detalles").Where("organizacion_id = ?", organizacionID).Find(&procesos)
 	return procesos
 }
 
 func (Proceso) GetByFolder(db *gorm.DB, folderID uint) []*Proceso {
 	var procesos []*Proceso
-	db.Preload("Organizacion").Preload("IncidentesProceso").Preload("Clientes").Preload("Usuarios").Preload("IncidentesProceso.Detalles").Where("folderid = ?", folderID).Find(&procesos)
+	db.Preload("Organizacion").Preload("TicketsProcesos").Preload("Clientes").Preload("Usuarios").Preload("TicketsProcesos.Detalles").Where("folderid = ?", folderID).Find(&procesos)
 	return procesos
 }
 
