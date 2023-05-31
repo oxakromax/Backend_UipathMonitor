@@ -315,7 +315,7 @@ func (H *Handler) PostIncidentDetails(c echo.Context) error {
 				NuevoEstado:   Incident.GetEstado(),
 			})
 			subject := fmt.Sprintf("Cambió de estado en incidente %d de proceso %s", Incident.ID, Process.Nombre)
-			functions.SendMail(Process.GetEmails(), subject, body)
+			_ = functions.SendMail(Process.GetEmails(), subject, body)
 		}()
 	}
 	return c.JSON(http.StatusOK, Incident)
