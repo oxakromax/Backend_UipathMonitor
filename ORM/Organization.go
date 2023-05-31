@@ -171,6 +171,8 @@ func (o *Organizacion) GetFromApi(structType interface{}, folderid ...int) error
 		resp, err = o.RequestAPI("GET", "Releases", nil, folderID)
 	case *UipathAPI.JobsResponse:
 		resp, err = o.RequestAPI("GET", "Jobs", nil, folderID)
+	case *UipathAPI.ProcessSchedulesResponse:
+		resp, err = o.RequestAPI("GET", "ProcessSchedules", nil, folderID)
 	default:
 		return errors.New("tipo de estructura no soportada, debe ser un puntero a una de las siguientes estructuras: FoldersResponse, LogResponse, ReleasesResponse, JobsResponse")
 	}

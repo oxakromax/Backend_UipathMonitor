@@ -148,3 +148,64 @@ type JobsValue struct {
 	ServerlessJobType                  interface{} `json:"ServerlessJobType"`
 	ID                                 int         `json:"Id"`
 }
+
+type ProcessSchedulesValue struct {
+	Key                             string      `json:"Key"`
+	Enabled                         bool        `json:"Enabled"`
+	Name                            string      `json:"Name"`
+	ReleaseId                       int         `json:"ReleaseId"`
+	ReleaseKey                      string      `json:"ReleaseKey"`
+	ReleaseName                     string      `json:"ReleaseName"`
+	PackageName                     string      `json:"PackageName"`
+	EnvironmentName                 interface{} `json:"EnvironmentName"`
+	EnvironmentId                   string      `json:"EnvironmentId"`
+	JobPriority                     interface{} `json:"JobPriority"`
+	SpecificPriorityValue           interface{} `json:"SpecificPriorityValue"`
+	RuntimeType                     string      `json:"RuntimeType"`
+	StartProcessCron                string      `json:"StartProcessCron"`
+	StartProcessCronDetails         string      `json:"StartProcessCronDetails"`
+	StartProcessCronSummary         string      `json:"StartProcessCronSummary"`
+	StartProcessNextOccurrence      time.Time   `json:"StartProcessNextOccurrence"`
+	StartStrategy                   int         `json:"StartStrategy"`
+	StopProcessExpression           string      `json:"StopProcessExpression"`
+	StopStrategy                    interface{} `json:"StopStrategy"`
+	KillProcessExpression           interface{} `json:"KillProcessExpression"`
+	ExternalJobKey                  interface{} `json:"ExternalJobKey"`
+	ExternalJobKeyScheduler         string      `json:"ExternalJobKeyScheduler"`
+	TimeZoneId                      string      `json:"TimeZoneId"`
+	TimeZoneIana                    string      `json:"TimeZoneIana"`
+	UseCalendar                     bool        `json:"UseCalendar"`
+	CalendarId                      interface{} `json:"CalendarId"`
+	CalendarName                    interface{} `json:"CalendarName"`
+	StopProcessDate                 interface{} `json:"StopProcessDate"`
+	InputArguments                  interface{} `json:"InputArguments"`
+	QueueDefinitionId               interface{} `json:"QueueDefinitionId"`
+	QueueDefinitionName             interface{} `json:"QueueDefinitionName"`
+	ItemsActivationThreshold        int         `json:"ItemsActivationThreshold"`
+	ItemsPerJobActivationTarget     int         `json:"ItemsPerJobActivationTarget"`
+	MaxJobsForActivation            int         `json:"MaxJobsForActivation"`
+	ResumeOnSameContext             bool        `json:"ResumeOnSameContext"`
+	Description                     interface{} `json:"Description"`
+	AlertPendingExpression          interface{} `json:"AlertPendingExpression"`
+	AlertRunningExpression          interface{} `json:"AlertRunningExpression"`
+	RunAsMe                         bool        `json:"RunAsMe"`
+	ConsecutiveJobFailuresThreshold int         `json:"ConsecutiveJobFailuresThreshold"`
+	JobFailuresGracePeriodInHours   int         `json:"JobFailuresGracePeriodInHours"`
+	IsConnected                     bool        `json:"IsConnected"`
+	Id                              int         `json:"Id"`
+	MachineRobots                   []struct {
+		MachineId     int         `json:"MachineId"`
+		MachineName   string      `json:"MachineName"`
+		RobotId       int         `json:"RobotId"`
+		RobotUserName interface{} `json:"RobotUserName"`
+		SessionId     int         `json:"SessionId"`
+		SessionName   interface{} `json:"SessionName"`
+	} `json:"MachineRobots"`
+	Tags []interface{} `json:"Tags"`
+}
+
+type ProcessSchedulesResponse struct {
+	OdataContext string                  `json:"@odata.context"`
+	OdataCount   int                     `json:"@odata.count"`
+	Value        []ProcessSchedulesValue `json:"value"`
+}

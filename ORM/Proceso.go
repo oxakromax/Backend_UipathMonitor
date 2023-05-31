@@ -2,7 +2,23 @@ package ORM
 
 import (
 	"gorm.io/gorm"
+	"time"
 )
+
+type JobHistory struct {
+	gorm.Model
+	Proceso         *Proceso      `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
+	ProcesoID       uint          `gorm:"not null"`
+	CreationTime    time.Time     `gorm:"precision:6"`
+	StartTime       time.Time     `gorm:"precision:6"`
+	EndTime         time.Time     `gorm:"precision:6"`
+	HostMachineName string        `gorm:"not null"`
+	Source          string        `gorm:"not null"`
+	State           string        `gorm:"not null"`
+	JobKey          string        `gorm:"not null;unique"`
+	JobID           string        `gorm:"not null;unique"`
+	Duration        time.Duration `gorm:"not null"`
+}
 
 type Proceso struct {
 	gorm.Model
@@ -16,10 +32,12 @@ type Proceso struct {
 	ErrorTolerance   int               `gorm:"not null;default:0"`
 	FatalTolerance   int               `gorm:"not null;default:0"`
 	ActiveMonitoring bool              `gorm:"not null;default:false"`
+	Prioridad        int               `gorm:"not null;default:1"`
 	Organizacion     *Organizacion     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
 	TicketsProcesos  []*TicketsProceso `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;" json:"IncidentesProceso"`
 	Clientes         []*Cliente        `gorm:"many2many:procesos_clientes;"`
 	Usuarios         []*Usuario        `gorm:"many2many:procesos_usuarios;"`
+	JobsHistory      []*JobHistory     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
 }
 
 func (Proceso) TableName() string {

@@ -15,6 +15,10 @@ type TicketsDetalle struct {
 	UsuarioID   int       `gorm:"not null"`
 }
 
+func (this *TicketsDetalle) Get(db *gorm.DB, id uint) {
+	db.First(&this, id)
+}
+
 // TableName TableName IncidentesDetalles Tablename: incidentes_detalle
 func (TicketsDetalle) TableName() string {
 	return "tickets_detalle"

@@ -358,6 +358,7 @@ func (H *Handler) NewIncident(c echo.Context) error {
 
 	Incident.ProcesoID = Process.ID
 	Incident.Proceso = &Process
+	Incident.UsuarioCreadorID = int(User.ID)
 	if len(Incident.Detalles) != 0 {
 		for _, detail := range Incident.Detalles {
 			detail.UsuarioID = int(User.ID)
@@ -369,7 +370,7 @@ func (H *Handler) NewIncident(c echo.Context) error {
 	// Create the incident to retrieve the ID
 	H.Db.Create(Incident)
 
-	if Incident.Tipo == 1 {
+	if Incident.TipoID == 1 {
 		Process.ActiveMonitoring = false
 		H.Db.Save(&Process)
 	}
@@ -390,7 +391,7 @@ func (H *Handler) NewIncident(c echo.Context) error {
 	body := Mail.GetBodyNewIncident(Mail.NewIncident{
 		ID:            int(Incident.ID),
 		NombreProceso: Process.Nombre,
-		Tipo:          Incident.GetTipo(),
+		Tipo:          Incident.GetTipo(H.Db),
 		Descripcion:   Incident.Descripcion,
 	})
 	subject := "Nuevo Ticket en el proceso " + Process.Nombre

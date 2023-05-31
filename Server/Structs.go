@@ -196,7 +196,21 @@ func (H *Handler) RefreshDataBase(e *echo.Echo) {
 		monitorUser.SetPassword(Password)
 		H.Db.Save(&monitorUser)
 	}
-
+	// "Incidente": 1,
+	// "Mejora": 2,
+	// "Mantenimiento": 3,
+	// "Otro": 4,
+	TicketsType := []string{"Incidente", "Mejora", "Mantenimiento", "Otro"}
+	for _, ticketType := range TicketsType {
+		ticket := new(ORM.TicketsTipo)
+		H.Db.Where("nombre = ?", ticketType).First(&ticket)
+		if ticket.ID == 0 {
+			ticket = &ORM.TicketsTipo{
+				Nombre: ticketType,
+			}
+			H.Db.Create(&ticket)
+		}
+	}
 }
 
 func (H *Handler) PingAuth(c echo.Context) error {

@@ -2,37 +2,37 @@ package ORM
 
 import "gorm.io/gorm"
 
+type TicketsTipo struct {
+	gorm.Model
+	Nombre string `json:"nombre" gorm:"not null"`
+}
+
 type TicketsProceso struct {
 	gorm.Model
-	ProcesoID   uint              `gorm:"not null"`
-	Proceso     *Proceso          `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
-	Descripcion string            `gorm:"type:text" json:"Incidente"`
-	Tipo        int               `gorm:"not null;default:1"`
-	Estado      int               `gorm:"not null;default:1"`
-	Detalles    []*TicketsDetalle `gorm:"foreignKey:IncidenteID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
+	ProcesoID        uint              `gorm:"not null"`
+	Proceso          *Proceso          `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
+	Descripcion      string            `gorm:"type:text" json:"Incidente"`
+	Tipo             *TicketsTipo      `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT" json:"TipoDetail"`
+	TipoID           uint              `gorm:"not null" json:"Tipo"`
+	Estado           int               `gorm:"not null;default:1"`
+	UsuarioCreador   *Usuario          `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT" json:"UsuarioCreadorDetail"`
+	UsuarioCreadorID int               `gorm:"not null" json:"UsuarioCreadorID"`
+	Detalles         []*TicketsDetalle `gorm:"foreignKey:IncidenteID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
 }
 
 func (this *TicketsProceso) Get(db *gorm.DB, id uint) {
-	db.Preload("Proceso").Preload("Detalles").First(&this, id)
+	db.Preload("Proceso").Preload("Detalles").Preload("Tipo").First(&this, id)
 }
 
-func (this *TicketsProceso) GetTipo() string {
+func (this *TicketsProceso) GetTipo(db *gorm.DB) string {
 	// "Incidente": 1,
 	// "Mejora": 2,
 	// "Mantenimiento": 3,
 	// "Otro": 4,
-	switch this.Tipo {
-	case 1:
-		return "Incidente"
-	case 2:
-		return "Mejora"
-	case 3:
-		return "Mantenimiento"
-	case 4:
-		return "Otro"
-	default:
-		return "Desconocido"
+	if this.Tipo == nil {
+		db.Preload("Tipo").First(&this.Tipo, this.ID)
 	}
+	return this.Tipo.Nombre
 }
 
 func (this *TicketsProceso) GetEstado() string {
