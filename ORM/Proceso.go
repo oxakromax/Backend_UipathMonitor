@@ -18,6 +18,7 @@ type JobHistory struct {
 	JobKey          string        `gorm:"not null;unique"`
 	JobID           string        `gorm:"not null;unique"`
 	Duration        time.Duration `gorm:"not null"`
+	Excepcion       bool          `gorm:"not null;default:false"`
 }
 
 type Proceso struct {
