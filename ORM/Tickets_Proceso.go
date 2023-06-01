@@ -18,6 +18,7 @@ type TicketsProceso struct {
 	UsuarioCreador   *Usuario          `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT" json:"UsuarioCreadorDetail"`
 	UsuarioCreadorID int               `gorm:"not null" json:"UsuarioCreadorID"`
 	Detalles         []*TicketsDetalle `gorm:"foreignKey:IncidenteID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
+	Excepcion        bool              `gorm:"not null;default:false"`
 }
 
 func (this *TicketsProceso) Get(db *gorm.DB, id uint) {
