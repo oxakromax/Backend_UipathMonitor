@@ -8,7 +8,7 @@ import (
 
 type TicketsDetalle struct {
 	gorm.Model
-	IncidenteID int       `gorm:"not null"`
+	TicketID    int       `gorm:"not null"`
 	Detalle     string    `gorm:"type:text" json:"Detalle"`
 	FechaInicio time.Time `gorm:"precision:6"`
 	FechaFin    time.Time `gorm:"precision:6"`

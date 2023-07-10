@@ -20,6 +20,7 @@ func (H *Handler) UpdateUipathProcess(c echo.Context) error {
 	for _, Org := range Orgs {
 		wg.Add(1)
 		go func(Org *ORM.Organizacion) {
+			defer wg.Done()
 			var MapFolderProcess = make(map[int][]*ORM.Proceso)
 			for _, proceso := range Org.Procesos {
 				MapFolderProcess[int(proceso.Folderid)] = append(MapFolderProcess[int(proceso.Folderid)], proceso)
@@ -28,12 +29,12 @@ func (H *Handler) UpdateUipathProcess(c echo.Context) error {
 			for FolderID, procesos := range MapFolderProcess {
 				SubWg.Add(1)
 				go func(FolderID int, procesos []*ORM.Proceso) {
+					defer SubWg.Done()
 					// Check if procesos exist in uipath, if it updates the name, if not, add [DELETED] to the name and Alias (if alias are empty, copy the name)
 					ProcessUipath := new(UipathAPI.ReleasesResponse)
 					err := Org.GetFromApi(ProcessUipath, FolderID)
 					if err != nil {
 						errorChannel <- err
-						SubWg.Done()
 						return
 					}
 					for _, proceso := range procesos {
@@ -75,25 +76,23 @@ func (H *Handler) UpdateUipathProcess(c echo.Context) error {
 							H.Db.Save(proceso)
 						}
 					}
-					SubWg.Done()
 				}(FolderID, procesos)
 			}
 			FoldersResponse := new(UipathAPI.FoldersResponse)
 			err := Org.GetFromApi(FoldersResponse)
 			if err != nil {
 				errorChannel <- err
-				wg.Done()
 				return
 			}
 			for _, FolderIter := range FoldersResponse.Value {
 				SubWg.Add(1)
 				Folders := FolderIter
 				go func() {
+					defer SubWg.Done()
 					Processes := new(UipathAPI.ReleasesResponse)
 					err = Org.GetFromApi(Processes, Folders.ID)
 					if err != nil {
 						errorChannel <- err
-						SubWg.Done()
 						return
 					}
 					for _, Process := range Processes.Value {
@@ -113,11 +112,9 @@ func (H *Handler) UpdateUipathProcess(c echo.Context) error {
 							H.Db.Create(ORMProcess)
 						}
 					}
-					SubWg.Done()
 				}()
 			}
 			SubWg.Wait()
-			wg.Done()
 		}(Org)
 	}
 	wg.Wait()

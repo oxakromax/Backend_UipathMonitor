@@ -1,23 +1,37 @@
 package ORM
 
-import "gorm.io/gorm"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 type TicketsTipo struct {
 	gorm.Model
 	Nombre string `json:"nombre" gorm:"not null"`
 }
 
+type IncidenteDiagnosticos struct {
+	gorm.Model
+	TicketID    uint      `gorm:"not null"`
+	Diagnostico string    `gorm:"type:text" json:"Diagnostico"`
+	UsuarioID   int       `gorm:"not null"`
+	FechaInicio time.Time `gorm:"precision:6"`
+	FechaFin    time.Time `gorm:"precision:6"`
+}
+
 type TicketsProceso struct {
 	gorm.Model
-	ProcesoID        uint              `gorm:"not null"`
-	Proceso          *Proceso          `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
-	Descripcion      string            `gorm:"type:text" json:"Incidente"`
-	Tipo             *TicketsTipo      `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT" json:"TipoDetail"`
-	TipoID           uint              `gorm:"not null" json:"Tipo"`
-	Estado           int               `gorm:"not null;default:1"`
-	UsuarioCreador   *Usuario          `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT" json:"UsuarioCreadorDetail"`
-	UsuarioCreadorID int               `gorm:"not null" json:"UsuarioCreadorID"`
-	Detalles         []*TicketsDetalle `gorm:"foreignKey:IncidenteID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
+	ProcesoID        uint                     `gorm:"not null"`
+	Proceso          *Proceso                 `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
+	Descripcion      string                   `gorm:"type:text" json:"Incidente"`
+	Tipo             *TicketsTipo             `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT" json:"TipoDetail"`
+	TipoID           uint                     `gorm:"not null" json:"Tipo"`
+	Estado           int                      `gorm:"not null;default:1"`
+	UsuarioCreador   *Usuario                 `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT" json:"UsuarioCreadorDetail"`
+	UsuarioCreadorID int                      `gorm:"not null" json:"UsuarioCreadorID"`
+	Detalles         []*TicketsDetalle        `gorm:"foreignKey:TicketID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
+	Diagnosticos     []*IncidenteDiagnosticos `gorm:"foreignKey:TicketID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
 }
 
 func (this *TicketsProceso) Get(db *gorm.DB, id uint) {
@@ -30,7 +44,9 @@ func (this *TicketsProceso) GetTipo(db *gorm.DB) string {
 	// "Mantenimiento": 3,
 	// "Otro": 4,
 	if this.Tipo == nil {
-		db.Preload("Tipo").First(&this.Tipo, this.ID)
+		Tipo := &TicketsTipo{}
+		db.First(&Tipo, this.TipoID)
+		this.Tipo = Tipo
 	}
 	return this.Tipo.Nombre
 }

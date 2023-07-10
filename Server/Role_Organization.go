@@ -71,7 +71,7 @@ func (H *Handler) GetOrganizations(c echo.Context) error {
 	}
 	// Obtener las organizaciones de la base de datos
 	AllOrgs := Organization.GetAll(H.Db)
-	if AllOrgs == nil || len(AllOrgs) == 0 {
+	if len(AllOrgs) == 0 {
 		return c.JSON(http.StatusNotFound, "Organizations not found")
 	}
 	for _, org := range AllOrgs {

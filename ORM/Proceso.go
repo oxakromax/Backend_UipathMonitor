@@ -16,7 +16,7 @@ type JobHistory struct {
 	Source          string        `gorm:"not null"`
 	State           string        `gorm:"not null"`
 	JobKey          string        `gorm:"not null;unique"`
-	JobID           string        `gorm:"not null;unique"`
+	JobID           int           `gorm:"not null;unique"`
 	Duration        time.Duration `gorm:"not null"`
 	Excepcion       bool          `gorm:"not null;default:false"`
 }
@@ -34,6 +34,7 @@ type Proceso struct {
 	FatalTolerance   int               `gorm:"not null;default:0"`
 	ActiveMonitoring bool              `gorm:"not null;default:false"`
 	Prioridad        int               `gorm:"not null;default:1"`
+	MaxQueueTime     int               `gorm:"not null;default:30"`
 	Organizacion     *Organizacion     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
 	TicketsProcesos  []*TicketsProceso `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;" json:"IncidentesProceso"`
 	Clientes         []*Cliente        `gorm:"many2many:procesos_clientes;"`

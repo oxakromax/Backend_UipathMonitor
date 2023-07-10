@@ -40,7 +40,7 @@ func OpenDB() *gorm.DB {
 		panic("failed to connect database")
 	}
 	err = db.AutoMigrate(&ORM.Organizacion{}, &ORM.Cliente{}, &ORM.Proceso{}, &ORM.TicketsTipo{}, &ORM.TicketsProceso{}, &ORM.TicketsDetalle{}, &ORM.Usuario{}, &ORM.Rol{},
-		&ORM.Route{}, &ORM.JobHistory{})
+		&ORM.Route{}, &ORM.JobHistory{}, &ORM.IncidenteDiagnosticos{})
 	if err != nil {
 		panic("failed to migrate database")
 	}
@@ -121,9 +121,11 @@ func main() {
 	e.POST("/user/processes/:id/newIncident", H.NewIncident)
 	e.POST("/monitor/:id/newIncident", H.NewIncident)
 	e.PATCH("/monitor/RefreshOrgs", H.UpdateUipathProcess)
-
 	e.GET("/monitor/Orgs", H.GetOrgs)
+	e.PUT("/monitor/UpdateExceptionJob", H.UpdateExceptionJob)
+	e.PATCH("/monitor/PatchJobHistory", H.PatchJobHistory)
 	e.GET("/client/tickets", H.GetClientTicket)
+	e.GET("/admin/downloads/orgs", H.GetOrgData)
 	H.RefreshDataBase(e)
 	var err error
 	// listener, err := localtunnel.Listen(localtunnel.Options{

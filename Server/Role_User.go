@@ -140,7 +140,7 @@ func (H *Handler) GetUserOrganizations(c echo.Context) error {
 	// Obtener las organizaciones del usuario
 	var Organizations []*ORM.Organizacion
 	_ = H.Db.Model(&User).Association("Organizaciones").Find(&Organizations)
-	if Organizations == nil || len(Organizations) == 0 {
+	if len(Organizations) == 0 {
 		return c.JSON(http.StatusNotFound, "Organizations not found")
 	}
 	for _, organization := range Organizations {
@@ -164,7 +164,7 @@ func (H *Handler) GetUserProcesses(c echo.Context) error {
 	// Obtener las organizaciones del usuario
 	var Organizations []*ORM.Organizacion
 	_ = H.Db.Model(&User).Association("Organizaciones").Find(&Organizations)
-	if Organizations == nil || len(Organizations) == 0 {
+	if len(Organizations) == 0 {
 		return c.JSON(http.StatusNotFound, "Organizations not found")
 	}
 	// Obtener los procesos de cada organización
@@ -172,7 +172,7 @@ func (H *Handler) GetUserProcesses(c echo.Context) error {
 	for _, organization := range Organizations {
 		_ = H.Db.Model(&organization).Association("Procesos").Find(&Processes)
 	}
-	if Processes == nil || len(Processes) == 0 {
+	if len(Processes) == 0 {
 		return c.JSON(http.StatusNotFound, "Processes not found")
 	}
 	return c.JSON(http.StatusOK, Processes)
@@ -217,7 +217,7 @@ func (H *Handler) GetUserIncidents(c echo.Context) error {
 		returnJson["ongoing"] = append(returnJson["ongoing"], &ProcessWithOnGoingIncidents)
 		returnJson["finished"] = append(returnJson["finished"], &ProcessWithoutIncidents)
 	}
-	// sort incidents inside process by incidentes.Detalles[0].FechaInicio
+	// sort incidents inside process by process.TicketsProcesos.Detalles[0].FechaInicio
 	for _, process := range returnJson["ongoing"] {
 		sort.Slice(process.TicketsProcesos, func(i, j int) bool {
 			if len(process.TicketsProcesos[i].Detalles) == 0 || len(process.TicketsProcesos[j].Detalles) == 0 {
@@ -226,6 +226,10 @@ func (H *Handler) GetUserIncidents(c echo.Context) error {
 			return process.TicketsProcesos[i].Detalles[0].FechaInicio.After(process.TicketsProcesos[j].Detalles[0].FechaInicio)
 		})
 	}
+	// FirstPriority: process.Prioridad (Higher first)
+	sort.Slice(returnJson["ongoing"], func(i, j int) bool {
+		return returnJson["ongoing"][i].Prioridad > returnJson["ongoing"][j].Prioridad
+	})
 	return c.JSON(http.StatusOK, returnJson)
 }
 
@@ -296,7 +300,7 @@ func (H *Handler) PostIncidentDetails(c echo.Context) error {
 
 	// Crear el detalle del incidente
 	IncidentDetail := &ORM.TicketsDetalle{
-		IncidenteID: int(Incident.ID),
+		TicketID:    int(Incident.ID),
 		Detalle:     c.FormValue("details"),
 		FechaInicio: IncidentDetailStartDate,
 		FechaFin:    IncidentDetailEndDate,
@@ -380,7 +384,7 @@ func (H *Handler) NewIncident(c echo.Context) error {
 		DefaultDetail.FechaInicio = time.Now().UTC()
 		DefaultDetail.FechaFin = time.Now().UTC()
 		DefaultDetail.Detalle = "Evento creado por el usuario " + User.Nombre + " " + User.Apellido
-		DefaultDetail.IncidenteID = int(Incident.ID)
+		DefaultDetail.TicketID = int(Incident.ID)
 		DefaultDetail.UsuarioID = int(User.ID)
 		H.Db.Create(DefaultDetail)
 	}
