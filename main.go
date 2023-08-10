@@ -39,12 +39,22 @@ func OpenDB() *gorm.DB {
 	if err != nil {
 		panic("failed to connect database")
 	}
+	createEnumTypeIfNotExists(db)
 	err = db.AutoMigrate(&ORM.Organizacion{}, &ORM.Cliente{}, &ORM.Proceso{}, &ORM.TicketsTipo{}, &ORM.TicketsProceso{}, &ORM.TicketsDetalle{}, &ORM.Usuario{}, &ORM.Rol{},
-		&ORM.Route{}, &ORM.JobHistory{}, &ORM.IncidenteDiagnosticos{})
+		&ORM.Route{}, &ORM.JobHistory{})
 	if err != nil {
+		fmt.Println(err)
 		panic("failed to migrate database")
 	}
 	return db
+}
+
+func createEnumTypeIfNotExists(db *gorm.DB) {
+	var exists int
+	db.Raw("SELECT 1 FROM pg_type WHERE typname = 'estado_enum'").Scan(&exists)
+	if exists == 0 {
+		db.Exec("CREATE TYPE estado_enum AS ENUM ('Iniciado', 'En Progreso', 'Finalizado')")
+	}
 }
 
 func main() {
@@ -89,6 +99,7 @@ func main() {
 	e.POST("/auth", H.Login)
 	e.POST("/forgot", H.ForgotPassword)
 	e.GET("/pingAuth", H.PingAuth)
+	e.GET("/Time", H.GetTime)
 	e.GET("/user/profile", H.GetProfile)
 	e.PUT("/user/profile", H.UpdateProfile)
 	e.GET("/user/organizations", H.GetUserOrganizations)

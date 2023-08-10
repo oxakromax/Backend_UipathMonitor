@@ -18,8 +18,8 @@
         <option value="bodyclose" />
         <option value="gosec" />
         <option value="maligned" />
-        <option value="revive" />
         <option value="stylecheck" />
+        <option value="revive" />
         <option value="whitespace" />
         <option value="gosimple" />
         <option value="goprintffuncname" />

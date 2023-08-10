@@ -208,7 +208,7 @@ func (H *Handler) GetUserIncidents(c echo.Context) error {
 		ProcessWithoutIncidents := *process
 		ProcessWithoutIncidents.TicketsProcesos = make([]*ORM.TicketsProceso, 0)
 		for _, incidentes := range process.TicketsProcesos {
-			if incidentes.Estado != 3 {
+			if incidentes.Estado != "Finalizado" {
 				ProcessWithOnGoingIncidents.TicketsProcesos = append(ProcessWithOnGoingIncidents.TicketsProcesos, incidentes)
 			} else {
 				ProcessWithoutIncidents.TicketsProcesos = append(ProcessWithoutIncidents.TicketsProcesos, incidentes)
@@ -257,7 +257,7 @@ func (H *Handler) PostIncidentDetails(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, "Incident not found")
 	}
 	// Verifica que el incidente no esté cerrado
-	if Incident.Estado == 3 {
+	if Incident.Estado == "Finalizado" {
 		return c.JSON(http.StatusForbidden, "Incident is already closed")
 	}
 	// Obtener el proceso del incidente
@@ -276,9 +276,9 @@ func (H *Handler) PostIncidentDetails(c echo.Context) error {
 	if !UserHasAccess && !User.HasRole("processes_administration") {
 		return c.JSON(http.StatusForbidden, "User does not have access to process")
 	}
-	// Obtener el estado del incidente, debe ser 2 o 3
-	IncidentState, err := strconv.Atoi(c.FormValue("estado"))
-	if err != nil || IncidentState != 3 && IncidentState != 2 {
+	// Obtener el estado del incidente
+	IncidentState := c.FormValue("estado")
+	if IncidentState != "Finalizado" && IncidentState != "En Progreso" {
 		return c.JSON(http.StatusBadRequest, "Invalid incident state")
 	}
 	// Obtener la fecha de inicio del detalle (DateTime from Dart)
@@ -316,7 +316,7 @@ func (H *Handler) PostIncidentDetails(c echo.Context) error {
 			body := Mail.GetBodyIncidentChange(Mail.IncidentChange{
 				ID:            int(Incident.ID),
 				NombreProceso: Process.Nombre,
-				NuevoEstado:   Incident.GetEstado(),
+				NuevoEstado:   Incident.Estado,
 			})
 			subject := fmt.Sprintf("Cambió de estado en incidente %d de proceso %s", Incident.ID, Process.Nombre)
 			_ = functions.SendMail(Process.GetEmails(), subject, body)
@@ -355,7 +355,7 @@ func (H *Handler) NewIncident(c echo.Context) error {
 	}
 	// Check if the process has incidents of the same type ongoing (not Estado 3)
 	for _, incident := range Process.TicketsProcesos {
-		if incident.Tipo == Incident.Tipo && incident.Estado != 3 {
+		if incident.Tipo == Incident.Tipo && incident.Estado != "Finalizado" {
 			return c.JSON(400, "Ya existe un incidente de este tipo en el proceso")
 		}
 	}

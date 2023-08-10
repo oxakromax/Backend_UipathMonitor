@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/labstack/echo/v4"
@@ -205,8 +206,13 @@ func (H *Handler) RefreshDataBase(e *echo.Echo) {
 		ticket := new(ORM.TicketsTipo)
 		H.Db.Where("nombre = ?", ticketType).First(&ticket)
 		if ticket.ID == 0 {
+			Diagnostico := false
+			if ticketType == "Incidente" {
+				Diagnostico = true
+			}
 			ticket = &ORM.TicketsTipo{
-				Nombre: ticketType,
+				Nombre:              ticketType,
+				NecesitaDiagnostico: Diagnostico,
 			}
 			H.Db.Create(&ticket)
 		}
@@ -225,5 +231,12 @@ func (H *Handler) PingAuth(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"message": "Autorizado",
+	})
+}
+
+// GetTime
+func (H *Handler) GetTime(c echo.Context) error {
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"time": time.Now().UTC(),
 	})
 }

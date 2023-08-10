@@ -13,6 +13,7 @@ type TicketsDetalle struct {
 	FechaInicio time.Time `gorm:"precision:6"`
 	FechaFin    time.Time `gorm:"precision:6"`
 	UsuarioID   int       `gorm:"not null"`
+	Diagnostico bool      `gorm:"default:false"`
 }
 
 func (this *TicketsDetalle) Get(db *gorm.DB, id uint) {
