@@ -25,10 +25,11 @@ func OpenDB() *gorm.DB {
 	Password := os.Getenv("DB_PASSWORD")
 	Database := os.Getenv("DB_NAME")
 	Port := os.Getenv("DB_PORT")
+	SSLMode := os.Getenv("DB_SSLMODE")
 	if Host == "" {
 		Host = "localhost"
 	}
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable", Host, User, Password, Database, Port)
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s", Host, User, Password, Database, Port, SSLMode)
 	log := logger.Default.LogMode(logger.Info)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: log,
