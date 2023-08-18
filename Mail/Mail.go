@@ -59,7 +59,7 @@ func ConvertToBase64(pathToImage string) string {
 	return encoded
 }
 
-func GetBodyNewIncident(newIncident NewIncident) string {
+func GetBodyNewTicket(newIncident NewIncident) string {
 	newIncident.LogoBase64 = ConvertToBase64(PathLogo)
 	t, _ := template.ParseFiles(PathNewIncident)
 	body := new(strings.Builder)
@@ -67,7 +67,7 @@ func GetBodyNewIncident(newIncident NewIncident) string {
 	return body.String()
 }
 
-func GetBodyIncidentChange(incidentChange IncidentChange) string {
+func GetBodyTicketChange(incidentChange IncidentChange) string {
 	incidentChange.LogoBase64 = ConvertToBase64(PathLogo)
 	t, _ := template.ParseFiles(PathIncidentChange)
 	body := new(strings.Builder)

@@ -156,6 +156,15 @@ func (H *Handler) RefreshDataBase(e *echo.Echo) {
 		}
 		H.Db.Create(&monitorRole)
 	}
+	DownloaderRole := new(ORM.Rol)
+	H.Db.Where("nombre = ?", "downloader").First(&DownloaderRole)
+	if DownloaderRole.ID == 0 {
+		DownloaderRole = &ORM.Rol{
+			Nombre:      "downloader",
+			Description: "El rol de downloader es el rol que permite descargar ficheros excel a modo de informe de organizaciones, usuarios y procesos.",
+		}
+		H.Db.Create(&DownloaderRole)
+	}
 
 	for _, route := range *routes {
 		if strings.Contains(route.Route, "/admin/organization") {
@@ -173,12 +182,16 @@ func (H *Handler) RefreshDataBase(e *echo.Echo) {
 		if strings.HasPrefix(route.Route, "/monitor") {
 			monitorRole.Rutas = append(monitorRole.Rutas, route)
 		}
+		if strings.HasPrefix(route.Route, "/download") {
+			DownloaderRole.Rutas = append(DownloaderRole.Rutas, route)
+		}
 	}
 	_ = H.Db.Model(&organizationRole).Association("Rutas").Replace(organizationRole.Rutas)
 	_ = H.Db.Model(&userRole).Association("Rutas").Replace(userRole.Rutas)
 	_ = H.Db.Model(&userAdministrationRole).Association("Rutas").Replace(userAdministrationRole.Rutas)
 	_ = H.Db.Model(&processesAdministrationRole).Association("Rutas").Replace(processesAdministrationRole.Rutas)
 	_ = H.Db.Model(&monitorRole).Association("Rutas").Replace(monitorRole.Rutas)
+	_ = H.Db.Model(&DownloaderRole).Association("Rutas").Replace(DownloaderRole.Rutas)
 	// Crear usuario monitor, sino existe, sobre escribir contraseña
 	monitorUser := new(ORM.Usuario)
 	Username := os.Getenv("MONITOR_USER")

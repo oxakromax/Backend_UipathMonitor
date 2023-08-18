@@ -17,7 +17,22 @@ func (H *Handler) CheckRoleMiddleware() echo.MiddlewareFunc {
 				}
 			}
 			// Verificar si el usuario está autenticado y tiene un rol permitido
-			id := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64)) // Extraer el ID del usuario del token JWT
+			userClaim, ok := c.Get("user").(*jwt.Token)
+			if !ok {
+				return echo.ErrUnauthorized
+			}
+
+			claims, ok := userClaim.Claims.(jwt.MapClaims)
+			if !ok {
+				return echo.ErrUnauthorized
+			}
+
+			idFloat, ok := claims["id"].(float64)
+			if !ok {
+				return echo.ErrUnauthorized
+			}
+
+			id := uint(idFloat)
 			for _, route := range H.UserUniversalRoutes {
 				if strings.EqualFold(route, c.Path()) {
 					return next(c) // Permitir el acceso a la ruta

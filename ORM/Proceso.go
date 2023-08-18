@@ -33,7 +33,7 @@ type Proceso struct {
 	ErrorTolerance   int               `gorm:"not null;default:0"`
 	FatalTolerance   int               `gorm:"not null;default:0"`
 	ActiveMonitoring bool              `gorm:"not null;default:false"`
-	Prioridad        int               `gorm:"not null;default:1"`
+	Priority         int               `gorm:"not null;default:1"`
 	MaxQueueTime     int               `gorm:"not null;default:30"`
 	Organizacion     *Organizacion     `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
 	TicketsProcesos  []*TicketsProceso `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;" json:"IncidentesProceso"`

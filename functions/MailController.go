@@ -1,6 +1,8 @@
 package functions
 
 import (
+	"os"
+	"strconv"
 	"strings"
 
 	"gopkg.in/gomail.v2"
@@ -11,17 +13,21 @@ func SendMail(to []string, subject string, body string) error {
 		return nil
 	}
 	// Set up authentication information.
-	from := "monitordeprocesos@outlook.com"
-	password := "Monitor123!"
-	smtpServer := "smtp-mail.outlook.com"
-	smtpPort := 587
+	from := os.Getenv("MAIL_ADRESS")
+	password := os.Getenv("MAIL_PASSWORD")
+	smtpServer := os.Getenv("MAIL_SMTP_SERVER")
+	smtpPort := os.Getenv("MAIL_SMTP_PORT")
+	smtpPortInt, err := strconv.Atoi(smtpPort)
+	if err != nil {
+		return err
+	}
 	// uses GoMail
 	m := gomail.NewMessage()
 	m.SetHeader("From", from)
 	m.SetHeader("To", removeDuplicates(to)...)
 	m.SetHeader("Subject", subject)
 	m.SetBody("text/html", body)
-	d := gomail.NewDialer(smtpServer, smtpPort, from, password)
+	d := gomail.NewDialer(smtpServer, smtpPortInt, from, password)
 	// Send the email
 	if err := d.DialAndSend(m); err != nil {
 		return err

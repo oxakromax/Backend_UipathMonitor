@@ -3,6 +3,7 @@ package ORM
 import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+	"time"
 )
 
 type Usuario struct {
@@ -46,12 +47,12 @@ func (Usuario) TableName() string {
 
 func (Usuario) GetAll(db *gorm.DB) []*Usuario {
 	var usuarios []*Usuario
-	db.Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Preload("Organizaciones").Find(&usuarios)
+	db.Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Preload("Organizaciones").Preload("Tickets_Procesos").Preload("Tickets_Detalle").Find(&usuarios)
 	return usuarios
 }
 
 func (this *Usuario) Get(db *gorm.DB, id uint) {
-	db.Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Preload("Organizaciones").First(&this, id)
+	db.Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Preload("Organizaciones").Preload("Tickets_Procesos").Preload("Tickets_Detalle").First(&this, id)
 }
 
 func (this *Usuario) HasRole(role string) bool {
@@ -100,5 +101,82 @@ func (this *Usuario) FillEmptyFields(db *gorm.DB) {
 }
 
 func (this *Usuario) GetComplete(db *gorm.DB) {
-	db.Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Preload("Organizaciones").Preload("Organizaciones.Procesos").First(&this, this.ID)
+	db.Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Preload("Organizaciones").Preload("Organizaciones.Procesos").Preload("Tickets_Procesos").Preload("Tickets_Detalle").First(&this, this.ID)
+}
+
+func (this *Usuario) GetCantityTicketsClosed(db *gorm.DB) int64 {
+	var Tickets []*TicketsProceso
+	db.Preload("Detalles", "usuario_id = ?", this.ID).Where("estado = ?", "Finalizado").Find(&Tickets)
+	// El ultimo detalle es el que da la finalización, si lo hizo el usuario, se cuenta
+	var count int64 = 0
+	for _, ticket := range Tickets {
+		if len(ticket.Detalles) == 0 {
+			continue
+		}
+		if ticket.Detalles[len(ticket.Detalles)-1].UsuarioID == int(this.ID) {
+			count++
+		}
+	}
+	return count
+}
+
+func (this *Usuario) GetCantityTicketsCreated(db *gorm.DB) int64 {
+	var Tickets []*TicketsProceso
+	db.Where("usuario_creador_id = ?", this.ID).Find(&Tickets)
+	return int64(len(Tickets))
+}
+
+func (this *Usuario) GetCantityTicketsPending(db *gorm.DB) int64 {
+	if this.Procesos == nil {
+		this.GetComplete(db)
+	}
+	count := 0
+	for _, proceso := range this.Procesos {
+		proceso.TicketsProcesos = nil
+		db.Where("estado != ?", "Finalizado").Find(&proceso.TicketsProcesos)
+		count += len(proceso.TicketsProcesos)
+	}
+	return int64(count)
+}
+
+func (this *Usuario) AverageDurationPerTicket(db *gorm.DB) time.Duration {
+	var Tickets []*TicketsProceso
+	db.Preload("Detalles", "usuario_id = ?", this.ID).Find(&Tickets)
+	var total time.Duration = 0
+	for _, ticket := range Tickets {
+		if len(ticket.Detalles) == 0 {
+			continue
+		}
+		// sumamos la diferencia entre la fecha de inicio y la fecha de fin de cada detalle realizado por el usuario
+		for _, detalle := range ticket.Detalles {
+			if detalle.UsuarioID == int(this.ID) {
+				total += detalle.FechaFin.Sub(detalle.FechaInicio)
+			}
+		}
+	}
+	if len(Tickets) == 0 {
+		return 0
+	}
+	return total / time.Duration(len(Tickets))
+}
+
+// Average time spent in tickets a day
+func (this *Usuario) AverageTimeSpentPerDay(db *gorm.DB) time.Duration {
+	var Tickets []*TicketsDetalle
+	db.Where("usuario_id = ?", this.ID).Order("fecha_inicio").Find(&Tickets)
+	// Discriminar por dia
+	var total time.Duration = 0
+	var dias = 0
+	var dia time.Time
+	for _, ticket := range Tickets {
+		total += ticket.FechaFin.Sub(ticket.FechaInicio)
+		if dia.Day() != ticket.FechaInicio.Day() {
+			dia = ticket.FechaInicio
+			dias++
+		}
+	}
+	if dias == 0 {
+		return 0
+	}
+	return total / time.Duration(dias)
 }

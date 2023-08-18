@@ -17,6 +17,7 @@ type TicketsProceso struct {
 	Descripcion      string            `gorm:"type:text" json:"Descripcion"`
 	Tipo             *TicketsTipo      `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT" json:"TipoDetail"`
 	TipoID           uint              `gorm:"not null" json:"Tipo"`
+	Prioridad        uint              `gorm:"not null;default:5" json:"Priority"`
 	Estado           string            `gorm:"not null;type:estado_enum;default:'Iniciado'" json:"Estado"`
 	UsuarioCreador   *Usuario          `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT" json:"UsuarioCreadorDetail"`
 	UsuarioCreadorID int               `gorm:"not null" json:"UsuarioCreadorID"`

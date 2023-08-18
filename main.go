@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/joho/godotenv"
 	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -58,10 +59,11 @@ func createEnumTypeIfNotExists(db *gorm.DB) {
 }
 
 func main() {
+	err := godotenv.Load()
 	e := echo.New()
 	H := &Server.Handler{
 		Db:                  OpenDB(),
-		TokenKey:            functions.GeneratePassword(32),
+		TokenKey:            os.Getenv("TOKEN_KEY"),
 		UniversalRoutes:     []string{"/auth", "/forgot", "/client/tickets"},
 		UserUniversalRoutes: []string{"/user/profile", "/pingAuth"},
 		DbKey:               os.Getenv("DB_KEY"),
@@ -137,8 +139,8 @@ func main() {
 	e.PATCH("/monitor/PatchJobHistory", H.PatchJobHistory)
 	e.GET("/client/tickets", H.GetClientTicket)
 	e.GET("/admin/downloads/orgs", H.GetOrgData)
+	e.GET("/admin/downloads/users", H.GetUserData)
 	H.RefreshDataBase(e)
-	var err error
 	// listener, err := localtunnel.Listen(localtunnel.Options{
 	// 	Subdomain: "golanguipathmonitortunnel",
 	// })
@@ -148,7 +150,11 @@ func main() {
 	// }
 	// fmt.Println("Tunnel URL: " + listener.URL())
 	// e.Listener = listener
-	err = e.Start(":8080")
+	port := "8080"
+	if os.Getenv("PORT") != "" {
+		port = os.Getenv("PORT")
+	}
+	err = e.Start(":" + port)
 	if err != nil {
 		fmt.Println(err)
 	}

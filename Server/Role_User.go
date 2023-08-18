@@ -226,9 +226,9 @@ func (H *Handler) GetUserIncidents(c echo.Context) error {
 			return process.TicketsProcesos[i].Detalles[0].FechaInicio.After(process.TicketsProcesos[j].Detalles[0].FechaInicio)
 		})
 	}
-	// FirstPriority: process.Prioridad (Higher first)
+	// FirstPriority: process.Priority (Higher first)
 	sort.Slice(returnJson["ongoing"], func(i, j int) bool {
-		return returnJson["ongoing"][i].Prioridad > returnJson["ongoing"][j].Prioridad
+		return returnJson["ongoing"][i].Priority > returnJson["ongoing"][j].Priority
 	})
 	return c.JSON(http.StatusOK, returnJson)
 }
@@ -313,7 +313,7 @@ func (H *Handler) PostIncidentDetails(c echo.Context) error {
 		// Enviar notificación a los usuarios del proceso
 		go func() {
 			// Se debe de redactar un correo con el ID del ticket, el nombre del proceso, el nuevo estado
-			body := Mail.GetBodyIncidentChange(Mail.IncidentChange{
+			body := Mail.GetBodyTicketChange(Mail.IncidentChange{
 				ID:            int(Incident.ID),
 				NombreProceso: Process.Nombre,
 				NuevoEstado:   Incident.Estado,
@@ -392,7 +392,7 @@ func (H *Handler) NewIncident(c echo.Context) error {
 	// Send the notification to the users
 	Emails := Process.GetEmails()
 	// Send the email to the users
-	body := Mail.GetBodyNewIncident(Mail.NewIncident{
+	body := Mail.GetBodyNewTicket(Mail.NewIncident{
 		ID:            int(Incident.ID),
 		NombreProceso: Process.Nombre,
 		Tipo:          Incident.GetTipo(H.Db),
