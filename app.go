@@ -2,11 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net/http"
-	"os"
-	"strings"
-	"time"
-
 	"github.com/joho/godotenv"
 	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
@@ -16,7 +11,9 @@ import (
 	"github.com/oxakromax/Backend_UipathMonitor/functions"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+	"net/http"
+	"os"
+	"strings"
 )
 
 func OpenDB() *gorm.DB {
@@ -30,13 +27,14 @@ func OpenDB() *gorm.DB {
 		Host = "localhost"
 	}
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s", Host, User, Password, Database, Port, SSLMode)
-	log := logger.Default.LogMode(logger.Info)
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: log,
-		NowFunc: func() time.Time {
-			return time.Now().Local()
-		},
-	})
+	//log := logger.Default.LogMode(logger.Info)
+	db, err := gorm.Open(postgres.Open(dsn)) //	&gorm.Config{
+	//	Logger: log,
+	//	NowFunc: func() time.Time {
+	//		return time.Now().Local()
+	//	},
+	//},
+
 	db.Logger.Info(nil, "Database connection successfully opened")
 	if err != nil {
 		panic("failed to connect database")
