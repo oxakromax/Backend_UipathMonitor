@@ -23,14 +23,10 @@ func OpenDB() *gorm.DB {
 	Database := os.Getenv("PGDATABASE")
 	Port := os.Getenv("PGPORT")
 	SSLMode := os.Getenv("PGSSLMODE")
-	if Host == "" {
-		Host = "localhost"
-	}
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s", Host, User, Password, Database, Port, SSLMode)
 	db, err := gorm.Open(postgres.Open(dsn))
-	db.Logger = db.Logger.LogMode(1) // 4 = Info
-
-	//db.Logger.Info(nil, "Database connection successfully opened")
+	db.Logger = db.Logger.LogMode(4) // 4 = Info
+	db.Logger.Info(nil, "Database connection successfully opened")
 	if err != nil {
 		panic("failed to connect database")
 	}
