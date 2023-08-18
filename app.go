@@ -17,23 +17,17 @@ import (
 )
 
 func OpenDB() *gorm.DB {
-	Host := os.Getenv("DB_HOST")
-	User := os.Getenv("DB_USER")
-	Password := os.Getenv("DB_PASSWORD")
-	Database := os.Getenv("DB_NAME")
-	Port := os.Getenv("DB_PORT")
-	SSLMode := os.Getenv("DB_SSLMODE")
+	Host := os.Getenv("PGHOST")
+	User := os.Getenv("PGUSER")
+	Password := os.Getenv("PGPASSWORD")
+	Database := os.Getenv("PGDATABASE")
+	Port := os.Getenv("PGPORT")
+	SSLMode := os.Getenv("PGSSLMODE")
 	if Host == "" {
 		Host = "localhost"
 	}
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s", Host, User, Password, Database, Port, SSLMode)
-	//log := logger.Default.LogMode(logger.Info)
-	db, err := gorm.Open(postgres.Open(dsn)) //	&gorm.Config{
-	//	Logger: log,
-	//	NowFunc: func() time.Time {
-	//		return time.Now().Local()
-	//	},
-	//},
+	db, err := gorm.Open(postgres.Open(dsn))
 
 	db.Logger.Info(nil, "Database connection successfully opened")
 	if err != nil {
