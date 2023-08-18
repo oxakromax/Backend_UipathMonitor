@@ -52,7 +52,6 @@ func main() {
 	err := godotenv.Load()
 	e := echo.New()
 	H := &Server.Handler{
-		Db:                  OpenDB(),
 		TokenKey:            os.Getenv("TOKEN_KEY"),
 		UniversalRoutes:     []string{"/auth", "/forgot", "/client/tickets"},
 		UserUniversalRoutes: []string{"/user/profile", "/pingAuth"},
@@ -130,7 +129,11 @@ func main() {
 	e.GET("/client/tickets", H.GetClientTicket)
 	e.GET("/admin/downloads/orgs", H.GetOrgData)
 	e.GET("/admin/downloads/users", H.GetUserData)
-	H.RefreshDataBase(e)
+	go func() {
+		// Fl0 needs to open the port in less than 60 seconds, so we do it in a goroutine
+		H.Db = OpenDB()
+		H.RefreshDataBase(e)
+	}()
 	// listener, err := localtunnel.Listen(localtunnel.Options{
 	// 	Subdomain: "golanguipathmonitortunnel",
 	// })
