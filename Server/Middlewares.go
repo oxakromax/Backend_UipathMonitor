@@ -8,6 +8,19 @@ import (
 	"github.com/oxakromax/Backend_UipathMonitor/ORM"
 )
 
+func (H *Handler) CheckDBState() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			// if H.DbState is True then the database is connected and let pass the request
+			// if not then send a 503 Service Unavailable
+			if H.DbState {
+				return next(c)
+			}
+			return c.JSON(503, "Service Unavailable")
+		}
+	}
+}
+
 func (H *Handler) CheckRoleMiddleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -39,7 +52,7 @@ func (H *Handler) CheckRoleMiddleware() echo.MiddlewareFunc {
 				}
 			}
 			User := ORM.Usuario{}
-			User.Get(H.Db, uint(id))              // Obtener el usuario de la base de datos
+			User.Get(H.Db, id)                    // Obtener el usuario de la base de datos
 			for _, UserRole := range User.Roles { // Iterar sobre los roles del usuario
 				for _, route := range UserRole.Rutas {
 					if strings.EqualFold(route.Route, c.Path()) && strings.EqualFold(route.Method, c.Request().Method) {

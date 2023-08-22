@@ -7,18 +7,43 @@ import (
 
 type JobHistory struct {
 	gorm.Model
-	Proceso         *Proceso      `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
-	ProcesoID       uint          `gorm:"not null"`
-	CreationTime    time.Time     `gorm:"precision:6"`
-	StartTime       time.Time     `gorm:"precision:6"`
-	EndTime         time.Time     `gorm:"precision:6"`
-	HostMachineName string        `gorm:"not null"`
-	Source          string        `gorm:"not null"`
-	State           string        `gorm:"not null"`
-	JobKey          string        `gorm:"not null;unique"`
-	JobID           int           `gorm:"not null;unique"`
-	Duration        time.Duration `gorm:"not null"`
-	Excepcion       bool          `gorm:"not null;default:false"`
+	Proceso          *Proceso  `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
+	ProcesoID        uint      `gorm:"not null"`
+	CreationTime     time.Time `gorm:"type:timestamptz(3);precision:3"`
+	StartTime        time.Time `gorm:"type:timestamptz(3);precision:3"`
+	EndTime          time.Time `gorm:"type:timestamptz(3);precision:3"`
+	HostMachineName  string
+	Source           string           `gorm:"not null"`
+	State            string           `gorm:"not null"`
+	JobKey           string           `gorm:"not null;unique"`
+	JobID            int              `gorm:"not null;unique"`
+	Duration         time.Duration    `gorm:"not null"`
+	MonitorException bool             `gorm:"not null;default:false"`
+	Logs             []*LogJobHistory `gorm:"foreignKey:JobID"`
+}
+
+func (this *JobHistory) Get(db *gorm.DB, id uint) {
+	// preload logs and order logs by newest first (timestamp)
+	db.Preload("Logs", func(db *gorm.DB) *gorm.DB {
+		return db.Order("time_stamp DESC")
+	}).First(&this, id)
+}
+
+type LogJobHistory struct {
+	gorm.Model
+	Level           string      `gorm:"not null"`
+	WindowsIdentity string      `gorm:"not null"`
+	ProcessName     string      `gorm:"not null"`
+	TimeStamp       time.Time   `gorm:"type:timestamptz(3);precision:3"`
+	Message         string      `gorm:"not null"`
+	JobKey          string      `gorm:"not null"`
+	RawMessage      string      `gorm:"not null"`
+	RobotName       string      `gorm:"not null"`
+	HostMachineName string      `gorm:"not null"`
+	MachineId       int         `gorm:"not null"`
+	MachineKey      string      `gorm:"not null"`
+	JobID           int         `gorm:"not null"`
+	Job             *JobHistory `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
 }
 
 type Proceso struct {
@@ -53,13 +78,7 @@ func (Proceso) GetAll(db *gorm.DB) []*Proceso {
 }
 
 func (this *Proceso) Get(db *gorm.DB, id uint) {
-	db.Preload("Organizacion").Preload("TicketsProcesos").Preload("Clientes").Preload("Usuarios").Preload("TicketsProcesos.Detalles").First(&this, id)
-}
-
-func (Proceso) GetByOrganizacion(db *gorm.DB, organizacionID uint) []*Proceso {
-	var procesos []*Proceso
-	db.Preload("Organizacion").Preload("TicketsProcesos").Preload("Clientes").Preload("Usuarios").Preload("TicketsProcesos.Detalles").Where("organizacion_id = ?", organizacionID).Find(&procesos)
-	return procesos
+	db.Preload("Organizacion").Preload("TicketsProcesos").Preload("Clientes").Preload("Usuarios").Preload("TicketsProcesos.Detalles").Preload("JobsHistory").First(&this, id)
 }
 
 func (Proceso) GetByFolder(db *gorm.DB, folderID uint) []*Proceso {

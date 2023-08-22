@@ -4,27 +4,30 @@
     <option name="concurrency" value="24" />
     <option name="enabledLinters">
       <list>
-        <option value="exportloopref" />
-        <option value="interfacer" />
         <option value="staticcheck" />
-        <option value="dupl" />
+        <option value="interfacer" />
+        <option value="exportloopref" />
         <option value="govet" />
-        <option value="errorlint" />
+        <option value="dupl" />
         <option value="funlen" />
+        <option value="errorlint" />
         <option value="gocritic" />
         <option value="goconst" />
         <option value="gocognit" />
         <option value="ineffassign" />
         <option value="bodyclose" />
+        <option value="containedctx" />
         <option value="gosec" />
         <option value="maligned" />
+        <option value="unused" />
         <option value="stylecheck" />
         <option value="revive" />
         <option value="whitespace" />
-        <option value="gosimple" />
+        <option value="contextcheck" />
         <option value="goprintffuncname" />
-        <option value="gocyclo" />
+        <option value="gosimple" />
         <option value="prealloc" />
+        <option value="gocyclo" />
       </list>
     </option>
     <option name="goLinterExe" value="C:\Users\Public\golangci-lint.exe" />

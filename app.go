@@ -26,13 +26,16 @@ func OpenDB() *gorm.DB {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s", Host, User, Password, Database, Port, SSLMode)
 	db, err := gorm.Open(postgres.Open(dsn))
 	db.Logger = db.Logger.LogMode(4) // 4 = Info
-	db.Logger.Info(nil, "Database connection successfully opened")
+	db.Logger.Info(nil, `Database connection successfully opened`)
 	if err != nil {
 		panic("failed to connect database")
 	}
 	createEnumTypeIfNotExists(db)
-	err = db.AutoMigrate(&ORM.Organizacion{}, &ORM.Cliente{}, &ORM.Proceso{}, &ORM.TicketsTipo{}, &ORM.TicketsProceso{}, &ORM.TicketsDetalle{}, &ORM.Usuario{}, &ORM.Rol{},
-		&ORM.Route{}, &ORM.JobHistory{})
+	err = db.AutoMigrate(
+		&ORM.Organizacion{}, &ORM.Cliente{}, &ORM.Proceso{},
+		&ORM.TicketsTipo{}, &ORM.TicketsProceso{}, &ORM.TicketsDetalle{}, &ORM.Usuario{},
+		&ORM.Rol{}, &ORM.Route{}, &ORM.JobHistory{}, &ORM.LogJobHistory{},
+	)
 	if err != nil {
 		fmt.Println(err)
 		panic("failed to migrate database")
@@ -56,6 +59,7 @@ func main() {
 		UniversalRoutes:     []string{"/auth", "/forgot", "/client/tickets"},
 		UserUniversalRoutes: []string{"/user/profile", "/pingAuth"},
 		DbKey:               os.Getenv("DB_KEY"),
+		DbState:             false,
 	}
 	if H.DbKey == "" {
 		fmt.Println("DB_KEY environment variable not set")
@@ -86,6 +90,7 @@ func main() {
 			return c.JSON(http.StatusUnauthorized, "Invalid or expired JWT")
 		},
 	}))
+	e.Use(H.CheckDBState()) // Check if the database is connected
 	e.Use(H.CheckRoleMiddleware())
 	e.POST("/auth", H.Login)
 	e.POST("/forgot", H.ForgotPassword)
@@ -129,10 +134,12 @@ func main() {
 	e.GET("/client/tickets", H.GetClientTicket)
 	e.GET("/admin/downloads/orgs", H.GetOrgData)
 	e.GET("/admin/downloads/users", H.GetUserData)
+	e.GET("/admin/downloads/processes", H.GetProcessData)
 	go func() {
 		// Fl0 needs to open the port in less than 60 seconds, so we do it in a goroutine
 		H.Db = OpenDB()
 		H.RefreshDataBase(e)
+		H.DbState = true
 	}()
 	// listener, err := localtunnel.Listen(localtunnel.Options{
 	// 	Subdomain: "golanguipathmonitortunnel",

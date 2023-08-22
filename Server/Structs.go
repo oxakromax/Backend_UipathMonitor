@@ -19,6 +19,7 @@ type Handler struct {
 	UniversalRoutes     []string
 	UserUniversalRoutes []string
 	DbKey               string
+	DbState             bool
 }
 
 func (H *Handler) RefreshDataBase(e *echo.Echo) {

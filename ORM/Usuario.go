@@ -12,8 +12,6 @@ type Usuario struct {
 	Apellido         string            `gorm:"not null"`
 	Email            string            `gorm:"not null"`
 	Password         string            `gorm:"not null"`
-	Activo           bool              `gorm:"not null;default:true"`
-	Pais             string            `gorm:"not null;default:'CL'"`
 	Roles            []*Rol            `gorm:"many2many:usuarios_roles;"`
 	Procesos         []*Proceso        `gorm:"many2many:procesos_usuarios;"`
 	Organizaciones   []*Organizacion   `gorm:"many2many:usuarios_organizaciones;"`

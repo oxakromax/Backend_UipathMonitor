@@ -140,9 +140,6 @@ func (H *Handler) GetUserOrganizations(c echo.Context) error {
 	// Obtener las organizaciones del usuario
 	var Organizations []*ORM.Organizacion
 	_ = H.Db.Model(&User).Association("Organizaciones").Find(&Organizations)
-	if len(Organizations) == 0 {
-		return c.JSON(http.StatusNotFound, "Organizations not found")
-	}
 	for _, organization := range Organizations {
 		organization.AppID = ""
 		organization.AppSecret = ""

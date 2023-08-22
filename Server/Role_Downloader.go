@@ -3,6 +3,7 @@ package Server
 import (
 	"archive/zip"
 	"bytes"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -514,6 +515,336 @@ func (H *Handler) GetUserData(c echo.Context) error {
 		// Set response headers
 		c.Response().Header().Set("Content-Type", "application/zip")
 		c.Response().Header().Set("Content-Disposition", "attachment; filename=users_data.zip")
+		return c.Blob(200, "application/zip", ZipFiles(filesMap))
+	}
+}
+
+func (H *Handler) GetProcessData(c echo.Context) error {
+	// Get the processes to retrieve from query params
+	ProcessIDStr := c.QueryParam("id") // comma separated list of processes id, like: 1,2,3,4
+	filesMap := make(map[string]*bytes.Buffer)
+	for _, ID := range strings.Split(ProcessIDStr, ",") {
+		ProcessIDInt, err := strconv.Atoi(ID)
+		if err != nil {
+			return c.JSON(400, "Invalid process ID:"+ID)
+		}
+		ProcessData := new(ORM.Proceso)
+		ProcessData.Get(H.Db, uint(ProcessIDInt))
+		if ProcessData.ID == 0 {
+			// Process not found, continue with the next one
+			continue
+		}
+		// Create a new Excel file
+		file := excelize.NewFile()
+		// Create sheet Summary
+		sheetName := "Process Data"
+
+		file.SetSheetName("Sheet1", sheetName)
+		// Set sheet title
+		file.SetCellValue(sheetName, "A1", "Process Data")
+		// Set Process Summary Data headers in column A and Data in column B
+		// Name, Alias, Folder ID, Folder Name, Warning Tolerance, Error Tolerance, Fatal Tolerance, Active Monitoring, Priority, Max Queue Time, Tickets, UsersEmails, ClientsEmails
+		file.SetCellValue(sheetName, "A2", "Name")
+		file.SetCellValue(sheetName, "B2", ProcessData.Nombre)
+		file.SetCellValue(sheetName, "A3", "Alias")
+		file.SetCellValue(sheetName, "B3", ProcessData.Alias)
+		file.SetCellValue(sheetName, "A4", "Folder ID")
+		file.SetCellValue(sheetName, "B4", ProcessData.Folderid)
+		file.SetCellValue(sheetName, "A5", "Folder Name")
+		file.SetCellValue(sheetName, "B5", ProcessData.Foldername)
+		file.SetCellValue(sheetName, "A6", "Warning Tolerance")
+		file.SetCellValue(sheetName, "B6", ProcessData.WarningTolerance)
+		file.SetCellValue(sheetName, "A7", "Error Tolerance")
+		file.SetCellValue(sheetName, "B7", ProcessData.ErrorTolerance)
+		file.SetCellValue(sheetName, "A8", "Fatal Tolerance")
+		file.SetCellValue(sheetName, "B8", ProcessData.FatalTolerance)
+		file.SetCellValue(sheetName, "A9", "Active Monitoring")
+		file.SetCellValue(sheetName, "B9", ProcessData.ActiveMonitoring)
+		file.SetCellValue(sheetName, "A10", "Priority")
+		file.SetCellValue(sheetName, "B10", ProcessData.Priority)
+		file.SetCellValue(sheetName, "A11", "Max Queue Time")
+		file.SetCellValue(sheetName, "B11", ProcessData.MaxQueueTime)
+		file.SetCellValue(sheetName, "A12", "Tickets")
+		file.SetCellValue(sheetName, "B12", len(ProcessData.TicketsProcesos))
+		file.SetCellValue(sheetName, "A13", "Users Emails") // separate emails with semicolon
+		UsersEmails := ""
+		for _, usuario := range ProcessData.Usuarios {
+			UsersEmails += usuario.Email + ";"
+		}
+		file.SetCellValue(sheetName, "B13", UsersEmails)
+		file.SetCellValue(sheetName, "A14", "Clients Emails")
+		ClientsEmails := ""
+		for _, cliente := range ProcessData.Clientes {
+			ClientsEmails += cliente.Email + ";"
+		}
+		file.SetCellValue(sheetName, "B14", ClientsEmails)
+		// Show organization Name
+		file.SetCellValue(sheetName, "A15", "Organization")
+		file.SetCellValue(sheetName, "B15", ProcessData.Organizacion.Nombre)
+		// Add Sheets Tickets and Tickets Details
+		// Add Tickets Sheet to Excel file
+		sheetName = "Tickets" // Tickets where the user are involved
+		file.NewSheet(sheetName)
+		// Set sheet title
+		file.SetCellValue(sheetName, "A1", "Tickets")
+		// add Headers: ID, ProcessID, Description, State, Priority, CreatorUserID,CreatedAt, StartDate, EndDate, Duration, Details_Count, type
+		file.SetCellValue(sheetName, "A2", "ID")
+		file.SetCellValue(sheetName, "B2", "Process ID")
+		file.SetCellValue(sheetName, "C2", "Description")
+		file.SetCellValue(sheetName, "D2", "State")
+		file.SetCellValue(sheetName, "E2", "Priority")
+		file.SetCellValue(sheetName, "F2", "Creator User ID")
+		file.SetCellValue(sheetName, "G2", "Created At")
+		file.SetCellValue(sheetName, "H2", "Start Date")
+		file.SetCellValue(sheetName, "I2", "End Date")
+		file.SetCellValue(sheetName, "J2", "Duration")
+		file.SetCellValue(sheetName, "K2", "Details Count")
+		file.SetCellValue(sheetName, "L2", "Type")
+		ActualRow := 3
+		for _, ticket := range ProcessData.TicketsProcesos {
+			ticket.Get(H.Db, ticket.ID) // obtener toda la data del ticket
+			file.SetCellValue(sheetName, "A"+strconv.Itoa(ActualRow), ticket.ID)
+			file.SetCellValue(sheetName, "B"+strconv.Itoa(ActualRow), ticket.ProcesoID)
+			file.SetCellValue(sheetName, "C"+strconv.Itoa(ActualRow), ticket.Descripcion)
+			file.SetCellValue(sheetName, "D"+strconv.Itoa(ActualRow), ticket.Estado)
+			file.SetCellValue(sheetName, "E"+strconv.Itoa(ActualRow), ticket.Prioridad)
+			file.SetCellValue(sheetName, "F"+strconv.Itoa(ActualRow), ticket.UsuarioCreadorID)
+			file.SetCellValue(sheetName, "G"+strconv.Itoa(ActualRow), ticket.CreatedAt)
+			var StartDate time.Time
+			var EndDate time.Time
+			var Duration time.Duration
+			if len(ticket.Detalles) > 0 {
+				StartDate = ticket.Detalles[0].FechaInicio
+				if ticket.Estado == "Finalizado" {
+					EndDate = ticket.Detalles[len(ticket.Detalles)-1].FechaFin
+				} else {
+					// Empty end date
+					EndDate = time.Time{}
+				}
+				for _, detalle := range ticket.Detalles {
+					Duration += detalle.FechaFin.Sub(detalle.FechaInicio)
+				}
+			}
+			file.SetCellValue(sheetName, "H"+strconv.Itoa(ActualRow), StartDate)
+			file.SetCellValue(sheetName, "I"+strconv.Itoa(ActualRow), EndDate)
+			file.SetCellValue(sheetName, "J"+strconv.Itoa(ActualRow), Duration)
+			file.SetCellValue(sheetName, "K"+strconv.Itoa(ActualRow), len(ticket.Detalles))
+			file.SetCellValue(sheetName, "L"+strconv.Itoa(ActualRow), ticket.GetTipo(H.Db))
+			ActualRow++
+		}
+		sheetName = "Tickets_Details" // Tickets where the user are involved
+		file.NewSheet(sheetName)
+		// Set sheet title
+		file.SetCellValue(sheetName, "A1", "Tickets Details")
+		// Headers:
+		// ID
+		//TicketID
+		//Detalle
+		//FechaInicio
+		//FechaFin
+		// UsuarioID
+		// User Name
+		//Diagnostico
+		//Duration
+		file.SetCellValue(sheetName, "A2", "ID")
+		file.SetCellValue(sheetName, "B2", "Ticket ID")
+		file.SetCellValue(sheetName, "C2", "Detalle")
+		file.SetCellValue(sheetName, "D2", "Fecha Inicio")
+		file.SetCellValue(sheetName, "E2", "Fecha Fin")
+		file.SetCellValue(sheetName, "F2", "Usuario ID")
+		file.SetCellValue(sheetName, "G2", "User Name")
+		file.SetCellValue(sheetName, "H2", "Diagnostico")
+		file.SetCellValue(sheetName, "I2", "Duration")
+		ActualRow = 3
+		for _, ticket := range ProcessData.TicketsProcesos {
+			ticket.Get(H.Db, ticket.ID) // obtener toda la data del ticket
+			for _, detalle := range ticket.Detalles {
+				file.SetCellValue(sheetName, "A"+strconv.Itoa(ActualRow), detalle.ID)
+				file.SetCellValue(sheetName, "B"+strconv.Itoa(ActualRow), detalle.TicketID)
+				file.SetCellValue(sheetName, "C"+strconv.Itoa(ActualRow), detalle.Detalle)
+				file.SetCellValue(sheetName, "D"+strconv.Itoa(ActualRow), detalle.FechaInicio)
+				file.SetCellValue(sheetName, "E"+strconv.Itoa(ActualRow), detalle.FechaFin)
+				file.SetCellValue(sheetName, "F"+strconv.Itoa(ActualRow), detalle.UsuarioID)
+				User := new(ORM.Usuario)
+				User.Get(H.Db, uint(detalle.UsuarioID))
+				file.SetCellValue(sheetName, "G"+strconv.Itoa(ActualRow), User.Nombre+" "+User.Apellido)
+				file.SetCellValue(sheetName, "H"+strconv.Itoa(ActualRow), detalle.Diagnostico)
+				file.SetCellValue(sheetName, "I"+strconv.Itoa(ActualRow), detalle.FechaFin.Sub(detalle.FechaInicio))
+				ActualRow++
+			}
+		}
+		// Add Sheet Jobs History
+		sheetName = "Jobs History"
+		file.NewSheet(sheetName)
+		// Set sheet title
+		file.SetCellValue(sheetName, "A1", "Jobs History")
+		// Headers:
+		//ProcesoID
+		//CreationTime
+		//StartTime
+		//EndTime
+		//HostMachineName
+		//Source
+		//State
+		//JobKey
+		//JobID
+		//Duration
+		//MonitorException
+		//Logs Count
+		file.SetCellValue(sheetName, "A2", "Proceso ID")
+		file.SetCellValue(sheetName, "B2", "Creation Time")
+		file.SetCellValue(sheetName, "C2", "Start Time")
+		file.SetCellValue(sheetName, "D2", "End Time")
+		file.SetCellValue(sheetName, "E2", "Host Machine Name")
+		file.SetCellValue(sheetName, "F2", "Source")
+		file.SetCellValue(sheetName, "G2", "State")
+		file.SetCellValue(sheetName, "H2", "Job Key")
+		file.SetCellValue(sheetName, "I2", "Job ID")
+		file.SetCellValue(sheetName, "J2", "Duration")
+		file.SetCellValue(sheetName, "K2", "Monitor Exception")
+		file.SetCellValue(sheetName, "L2", "Logs Count")
+		ActualRow = 3
+		// order by end time newest first
+		sort.Slice(ProcessData.JobsHistory, func(i, j int) bool {
+			return ProcessData.JobsHistory[i].EndTime.After(ProcessData.JobsHistory[j].EndTime)
+		})
+		for _, job := range ProcessData.JobsHistory {
+
+			file.SetCellValue(sheetName, "A"+strconv.Itoa(ActualRow), job.ProcesoID)
+			file.SetCellValue(sheetName, "B"+strconv.Itoa(ActualRow), job.CreationTime)
+			file.SetCellValue(sheetName, "C"+strconv.Itoa(ActualRow), job.StartTime)
+			file.SetCellValue(sheetName, "D"+strconv.Itoa(ActualRow), job.EndTime)
+			file.SetCellValue(sheetName, "E"+strconv.Itoa(ActualRow), job.HostMachineName)
+			file.SetCellValue(sheetName, "F"+strconv.Itoa(ActualRow), job.Source)
+			file.SetCellValue(sheetName, "G"+strconv.Itoa(ActualRow), job.State)
+			file.SetCellValue(sheetName, "H"+strconv.Itoa(ActualRow), job.JobKey)
+			file.SetCellValue(sheetName, "I"+strconv.Itoa(ActualRow), job.JobID)
+			file.SetCellValue(sheetName, "J"+strconv.Itoa(ActualRow), job.Duration)
+			file.SetCellValue(sheetName, "K"+strconv.Itoa(ActualRow), job.MonitorException)
+			file.SetCellValue(sheetName, "L"+strconv.Itoa(ActualRow), len(job.Logs))
+			ActualRow++
+		}
+		// Sheet Logs
+		sheetName = "Logs"
+		file.NewSheet(sheetName)
+		// Set sheet title
+		file.SetCellValue(sheetName, "A1", "Logs")
+		// Headers:
+		//Level
+		//WindowsIdentity
+		//ProcessName
+		//TimeStamp
+		//Message
+		//JobKey
+		//RawMessage
+		//RobotName
+		//HostMachineName
+		//MachineId
+		//MachineKey
+		//JobID
+		file.SetCellValue(sheetName, "A2", "Level")
+		file.SetCellValue(sheetName, "B2", "Windows Identity")
+		file.SetCellValue(sheetName, "C2", "Process Name")
+		file.SetCellValue(sheetName, "D2", "Time Stamp")
+		file.SetCellValue(sheetName, "E2", "Message")
+		file.SetCellValue(sheetName, "F2", "Job Key")
+		file.SetCellValue(sheetName, "G2", "Raw Message")
+		file.SetCellValue(sheetName, "H2", "Robot Name")
+		file.SetCellValue(sheetName, "I2", "Host Machine Name")
+		file.SetCellValue(sheetName, "J2", "Machine ID")
+		file.SetCellValue(sheetName, "K2", "Machine Key")
+		file.SetCellValue(sheetName, "L2", "Job ID")
+		ActualRow = 3
+		for _, job := range ProcessData.JobsHistory {
+			job.Get(H.Db, job.ID)
+			for _, log := range job.Logs {
+				file.SetCellValue(sheetName, "A"+strconv.Itoa(ActualRow), log.Level)
+				file.SetCellValue(sheetName, "B"+strconv.Itoa(ActualRow), log.WindowsIdentity)
+				file.SetCellValue(sheetName, "C"+strconv.Itoa(ActualRow), log.ProcessName)
+				file.SetCellValue(sheetName, "D"+strconv.Itoa(ActualRow), log.TimeStamp)
+				file.SetCellValue(sheetName, "E"+strconv.Itoa(ActualRow), log.Message)
+				file.SetCellValue(sheetName, "F"+strconv.Itoa(ActualRow), log.JobKey)
+				file.SetCellValue(sheetName, "G"+strconv.Itoa(ActualRow), log.RawMessage)
+				file.SetCellValue(sheetName, "H"+strconv.Itoa(ActualRow), log.RobotName)
+				file.SetCellValue(sheetName, "I"+strconv.Itoa(ActualRow), log.HostMachineName)
+				file.SetCellValue(sheetName, "J"+strconv.Itoa(ActualRow), log.MachineId)
+				file.SetCellValue(sheetName, "K"+strconv.Itoa(ActualRow), log.MachineKey)
+				file.SetCellValue(sheetName, "L"+strconv.Itoa(ActualRow), log.JobID)
+				ActualRow++
+			}
+		}
+
+		// Add sheets Usuarios, Clientes
+		// Add Users Sheet to Excel file
+		sheetName = "Users" // Users involved in the process
+		file.NewSheet(sheetName)
+		// Set sheet title
+		file.SetCellValue(sheetName, "A1", "Users")
+		// Headers:
+		// Nombre
+		// Apellido
+		// Email
+		file.SetCellValue(sheetName, "A2", "Nombre")
+		file.SetCellValue(sheetName, "B2", "Apellido")
+		file.SetCellValue(sheetName, "C2", "Email")
+		ActualRow = 3
+		for _, usuario := range ProcessData.Usuarios {
+			file.SetCellValue(sheetName, "A"+strconv.Itoa(ActualRow), usuario.Nombre)
+			file.SetCellValue(sheetName, "B"+strconv.Itoa(ActualRow), usuario.Apellido)
+			file.SetCellValue(sheetName, "C"+strconv.Itoa(ActualRow), usuario.Email)
+			ActualRow++
+		}
+		// Add Clients Sheet to Excel file
+		sheetName = "Clients" // Clients involved in the process
+		file.NewSheet(sheetName)
+		// Set sheet title
+		file.SetCellValue(sheetName, "A1", "Clients")
+		// Headers:
+		// Nombre
+		// Apellido
+		// Email
+		// Organization ID
+		// Organization Name
+		file.SetCellValue(sheetName, "A2", "Nombre")
+		file.SetCellValue(sheetName, "B2", "Apellido")
+		file.SetCellValue(sheetName, "C2", "Email")
+		file.SetCellValue(sheetName, "D2", "Organization ID")
+		file.SetCellValue(sheetName, "E2", "Organization Name")
+		ActualRow = 3
+		for _, cliente := range ProcessData.Clientes {
+			cliente.Get(H.Db, cliente.ID) // obtener toda la data del cliente
+			file.SetCellValue(sheetName, "A"+strconv.Itoa(ActualRow), cliente.Nombre)
+			file.SetCellValue(sheetName, "B"+strconv.Itoa(ActualRow), cliente.Apellido)
+			file.SetCellValue(sheetName, "C"+strconv.Itoa(ActualRow), cliente.Email)
+			file.SetCellValue(sheetName, "D"+strconv.Itoa(ActualRow), cliente.OrganizacionID)
+			file.SetCellValue(sheetName, "E"+strconv.Itoa(ActualRow), cliente.Organizacion.Nombre)
+			ActualRow++
+		}
+		// Write Excel file to memory buffer
+		buf := new(bytes.Buffer)
+		if err := file.Write(buf); err != nil {
+			return c.JSON(500, "Failed to write process data to memory")
+		}
+		// ID_Name_OrgName
+		fileName := strconv.Itoa(int(ProcessData.ID)) + "_" + ProcessData.Nombre + "_" + ProcessData.Organizacion.Nombre + ".xlsx"
+		filesMap[fileName] = buf
+	}
+	switch {
+	case len(filesMap) == 0:
+		return c.JSON(404, "No processes found")
+	case len(filesMap) == 1:
+		fileName := ""
+		buff := new(bytes.Buffer)
+		for s, buffer := range filesMap {
+			fileName = s
+			buff = buffer
+		}
+		c.Response().Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+		c.Response().Header().Set("Content-Disposition", "attachment; filename="+fileName)
+		return c.Blob(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buff.Bytes())
+	default:
+		c.Response().Header().Set("Content-Type", "application/zip")
+		c.Response().Header().Set("Content-Disposition", "attachment; filename=process_data.zip")
 		return c.Blob(200, "application/zip", ZipFiles(filesMap))
 	}
 }
