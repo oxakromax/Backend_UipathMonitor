@@ -31,7 +31,7 @@ func OpenDB() *gorm.DB {
 		},
 	)
 	db.Logger = db.Logger.LogMode(4) // 4 = Info
-	db.Logger.Info(nil, `Database connection successfully opened`)
+	db.Logger.Info(nil, "Database connection successfully opened")
 	if err != nil {
 		panic("failed to connect database")
 	}
@@ -57,7 +57,10 @@ func createEnumTypeIfNotExists(db *gorm.DB) {
 }
 
 func main() {
-	err := godotenv.Load()
+	var err = godotenv.Load()
+	if err != nil {
+		fmt.Println("Error loading .env file, please be sure ENV variables are set")
+	}
 	e := echo.New()
 	H := &Server.Handler{
 		TokenKey:            os.Getenv("TOKEN_KEY"),
@@ -70,8 +73,28 @@ func main() {
 		fmt.Println("DB_KEY environment variable not set")
 		NewKey, _ := functions.GenerateAESKey()
 		fmt.Println("Generated key: " + NewKey)
-		return
+		return // Exit, don't start the server
 	}
+	middlewares(e, H)
+	routes(e, H)
+
+	go func() {
+		// Fl0 needs to open the port in less than 60 seconds, so we do it in a goroutine
+		H.Db = OpenDB()
+		H.RefreshDataBase(e)
+		H.DbState = true
+	}()
+	port := "8080"
+	if os.Getenv("PORT") != "" {
+		port = os.Getenv("PORT")
+	}
+	err = e.Start(":" + port)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func middlewares(e *echo.Echo, H *Server.Handler) {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
@@ -85,7 +108,7 @@ func main() {
 		Skipper: func(c echo.Context) bool {
 			// Skip authentication for signup and login requests
 			for _, route := range H.UniversalRoutes {
-				if strings.ToLower(route) == strings.ToLower(c.Path()) {
+				if strings.EqualFold(route, c.Path()) {
 					return true
 				}
 			}
@@ -97,6 +120,9 @@ func main() {
 	}))
 	e.Use(H.CheckDBState()) // Check if the database is connected
 	e.Use(H.CheckRoleMiddleware())
+}
+
+func routes(e *echo.Echo, H *Server.Handler) {
 	e.DELETE("/admin/organization", H.DeleteOrganization)
 	e.DELETE("/admin/organization/client", H.DeleteOrganizationClient)
 	e.DELETE("/admin/users", H.DeleteUser)
@@ -140,28 +166,4 @@ func main() {
 	e.PUT("/admin/users", H.UpdateUser)
 	e.PUT("/monitor/UpdateExceptionJob", H.UpdateExceptionJob)
 	e.PUT("/user/processes/:id", H.UpdateProcess)
-
-	go func() {
-		// Fl0 needs to open the port in less than 60 seconds, so we do it in a goroutine
-		H.Db = OpenDB()
-		H.RefreshDataBase(e)
-		H.DbState = true
-	}()
-	// listener, err := localtunnel.Listen(localtunnel.Options{
-	// 	Subdomain: "golanguipathmonitortunnel",
-	// })
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	return
-	// }
-	// fmt.Println("Tunnel URL: " + listener.URL())
-	// e.Listener = listener
-	port := "8080"
-	if os.Getenv("PORT") != "" {
-		port = os.Getenv("PORT")
-	}
-	err = e.Start(":" + port)
-	if err != nil {
-		fmt.Println(err)
-	}
 }
