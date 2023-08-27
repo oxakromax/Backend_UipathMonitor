@@ -83,7 +83,7 @@ func (this *Proceso) Get(db *gorm.DB, id uint) {
 
 func (Proceso) GetByFolder(db *gorm.DB, folderID uint) []*Proceso {
 	var procesos []*Proceso
-	db.Preload("Organizacion").Preload("TicketsProcesos").Preload("Clientes").Preload("Usuarios").Preload("TicketsProcesos.Detalles").Where("folderid = ?", folderID).Find(&procesos)
+	db.Preload("Organizacion").Preload("TicketsProcesos").Preload("Clientes").Preload("Usuarios").Preload("TicketsProcesos.Detalles").Preload("TicketsProcesos.Tipo").Where("folderid = ?", folderID).Find(&procesos)
 	return procesos
 }
 
@@ -96,6 +96,12 @@ func (this *Proceso) GetEmails() []string {
 		emails = append(emails, usuario.Email)
 	}
 	return emails
+}
+
+func GetListByUser(db *gorm.DB, userID uint) []*Proceso {
+	var procesos []*Proceso
+	db.Preload("TicketsProcesos").Preload("Organizacion").Preload("Clientes").Preload("Usuarios").Preload("TicketsProcesos.Detalles").Preload("TicketsProcesos.Tipo").Joins("JOIN procesos_usuarios ON procesos_usuarios.proceso_id = procesos.id").Where("procesos_usuarios.usuario_id = ?", userID).Find(&procesos)
+	return procesos
 }
 
 func (this *Proceso) RemoveClients(db *gorm.DB, list []int) error {

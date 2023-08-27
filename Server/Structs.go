@@ -254,3 +254,13 @@ func (H *Handler) GetTime(c echo.Context) error {
 		"time": time.Now().UTC(),
 	})
 }
+
+func (H *Handler) GetTicketsType(c echo.Context) error {
+	TicketsType := make([]*ORM.TicketsTipo, 0)
+	H.Db.Find(&TicketsType)
+	MapNameID := make(map[string]uint)
+	for _, ticketType := range TicketsType {
+		MapNameID[ticketType.Nombre] = ticketType.ID
+	}
+	return c.JSON(http.StatusOK, MapNameID)
+}

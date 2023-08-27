@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -43,7 +44,6 @@ func (H *Handler) Login(c echo.Context) error {
 		"token": t, // Devolver el token codificado como un campo en la respuesta JSON
 	})
 }
-
 func (H *Handler) ForgotPassword(c echo.Context) error {
 	email := c.FormValue("email") // Obtener el valor del campo "email" del formulario de inicio de sesión
 	if email == "" {              // Validar si los campos son nulos o vacíos
@@ -185,8 +185,8 @@ func (H *Handler) GetUserIncidents(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, "User not found")
 	}
 	var procesosWithIncidents []*ORM.Proceso
+	User.Procesos = ORM.GetListByUser(H.Db, User.ID)
 	for _, proceso := range User.Procesos {
-		proceso.Get(H.Db, proceso.ID)
 		for _, usuario := range proceso.Usuarios {
 			usuario.Password = ""
 		}
@@ -197,25 +197,29 @@ func (H *Handler) GetUserIncidents(c echo.Context) error {
 			procesosWithIncidents = append(procesosWithIncidents, proceso)
 		}
 	}
-	var returnJson = make(map[string][]*ORM.Proceso)
+	var returnJSON = make(map[string][]*ORM.Proceso)
 
 	for _, process := range procesosWithIncidents {
 		ProcessWithOnGoingIncidents := *process
 		ProcessWithOnGoingIncidents.TicketsProcesos = make([]*ORM.TicketsProceso, 0)
 		ProcessWithoutIncidents := *process
 		ProcessWithoutIncidents.TicketsProcesos = make([]*ORM.TicketsProceso, 0)
-		for _, incidentes := range process.TicketsProcesos {
-			if incidentes.Estado != "Finalizado" {
-				ProcessWithOnGoingIncidents.TicketsProcesos = append(ProcessWithOnGoingIncidents.TicketsProcesos, incidentes)
+		for _, tickets := range process.TicketsProcesos {
+			if tickets.Estado != "Finalizado" {
+				ProcessWithOnGoingIncidents.TicketsProcesos = append(ProcessWithOnGoingIncidents.TicketsProcesos, tickets)
 			} else {
-				ProcessWithoutIncidents.TicketsProcesos = append(ProcessWithoutIncidents.TicketsProcesos, incidentes)
+				ProcessWithoutIncidents.TicketsProcesos = append(ProcessWithoutIncidents.TicketsProcesos, tickets)
 			}
 		}
-		returnJson["ongoing"] = append(returnJson["ongoing"], &ProcessWithOnGoingIncidents)
-		returnJson["finished"] = append(returnJson["finished"], &ProcessWithoutIncidents)
+		if len(ProcessWithOnGoingIncidents.TicketsProcesos) > 0 {
+			returnJSON["ongoing"] = append(returnJSON["ongoing"], &ProcessWithOnGoingIncidents)
+		}
+		if len(ProcessWithoutIncidents.TicketsProcesos) > 0 {
+			returnJSON["finished"] = append(returnJSON["finished"], &ProcessWithoutIncidents)
+		}
 	}
 	// sort incidents inside process by process.TicketsProcesos.Detalles[0].FechaInicio
-	for _, process := range returnJson["ongoing"] {
+	for _, process := range returnJSON["ongoing"] {
 		sort.Slice(process.TicketsProcesos, func(i, j int) bool {
 			if len(process.TicketsProcesos[i].Detalles) == 0 || len(process.TicketsProcesos[j].Detalles) == 0 {
 				return false
@@ -223,11 +227,64 @@ func (H *Handler) GetUserIncidents(c echo.Context) error {
 			return process.TicketsProcesos[i].Detalles[0].FechaInicio.After(process.TicketsProcesos[j].Detalles[0].FechaInicio)
 		})
 	}
-	// FirstPriority: process.Priority (Higher first)
-	sort.Slice(returnJson["ongoing"], func(i, j int) bool {
-		return returnJson["ongoing"][i].Priority > returnJson["ongoing"][j].Priority
+	// FirstPriority: process.TicketsProceso.Priority Highest first (No matter what, if the process had 1 ticket with priority 10, it will be first)
+	// SecondPriority: process.Priority That means if there's some processes with same first priority, order them by process.Priority
+	sort.Slice(returnJSON["ongoing"], func(i, j int) bool {
+		MaxPriorityI := 0
+		MaxPriorityJ := 0
+		for _, ticket := range returnJSON["ongoing"][i].TicketsProcesos {
+			if int(ticket.Prioridad) > MaxPriorityI {
+				MaxPriorityI = int(ticket.Prioridad)
+			}
+		}
+		for _, ticket := range returnJSON["ongoing"][j].TicketsProcesos {
+			if int(ticket.Prioridad) > MaxPriorityJ {
+				MaxPriorityJ = int(ticket.Prioridad)
+			}
+		}
+		if MaxPriorityI == MaxPriorityJ {
+			return returnJSON["ongoing"][i].Priority > returnJSON["ongoing"][j].Priority
+		}
+		return MaxPriorityI > MaxPriorityJ
 	})
-	return c.JSON(http.StatusOK, returnJson)
+	// sort incidents inside process by process.TicketsProcesos.Prioridad Highest first
+	for _, process := range returnJSON["ongoing"] {
+		sort.Slice(process.TicketsProcesos, func(i, j int) bool {
+			return process.TicketsProcesos[i].Prioridad > process.TicketsProcesos[j].Prioridad
+		})
+	}
+	return c.JSON(http.StatusOK, returnJSON)
+}
+
+func (H *Handler) GetTicketSettings(c echo.Context) error {
+	Settings := struct {
+		NeedDiagnostic bool   `json:"needDiagnostic"`
+		Type           string `json:"type"`
+	}{
+		NeedDiagnostic: true,
+		Type:           "",
+	}
+	idTicket := c.QueryParam("id")
+	ticketidInt, err := strconv.Atoi(idTicket)
+	if err != nil {
+		return c.JSON(400, "Invalid ticket ID")
+	}
+	ticket := new(ORM.TicketsProceso)
+	ticket.Get(H.Db, uint(ticketidInt))
+	if ticket.ID == 0 {
+		return c.JSON(404, "ticket not found")
+	}
+	if ticket.Tipo.NecesitaDiagnostico {
+		for _, detalle := range ticket.Detalles {
+			if detalle.Diagnostico { // si algun detalle tiene diagnostico, no se necesita otro
+				Settings.NeedDiagnostic = false
+			}
+		}
+	} else {
+		Settings.NeedDiagnostic = false
+	}
+	Settings.Type = ticket.Tipo.Nombre
+	return c.JSON(200, Settings)
 }
 
 func (H *Handler) PostIncidentDetails(c echo.Context) error {
@@ -237,6 +294,7 @@ func (H *Handler) PostIncidentDetails(c echo.Context) error {
 	// - fechaInicio: Fecha de inicio del detalle
 	// - fechaFin: Fecha de fin del detalle
 	// - estado: Nuevo estado del incidente
+	// - IsDiagnostic: Indica si el detalle es un diagnostico
 	// Obtener el ID del usuario del token JWT
 	id := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
 	// Obtener el usuario de la base de datos
@@ -296,12 +354,14 @@ func (H *Handler) PostIncidentDetails(c echo.Context) error {
 	// y esto es disruptivo al trabajar con dart y tener un servidor en una ubicación distinta
 
 	// Crear el detalle del incidente
+
 	IncidentDetail := &ORM.TicketsDetalle{
 		TicketID:    int(Incident.ID),
 		Detalle:     c.FormValue("details"),
 		FechaInicio: IncidentDetailStartDate,
 		FechaFin:    IncidentDetailEndDate,
 		UsuarioID:   int(User.ID),
+		Diagnostico: strings.ToLower(c.FormValue("IsDiagnostic")) == "true",
 	}
 	Incident.Estado = IncidentState
 	Incident.Detalles = append(Incident.Detalles, IncidentDetail)
@@ -352,7 +412,7 @@ func (H *Handler) NewIncident(c echo.Context) error {
 	}
 	// Check if the process has incidents of the same type ongoing (not Estado 3)
 	for _, incident := range Process.TicketsProcesos {
-		if incident.Tipo == Incident.Tipo && incident.Estado != "Finalizado" {
+		if incident.TipoID == Incident.TipoID && incident.Estado != "Finalizado" {
 			return c.JSON(400, "Ya existe un incidente de este tipo en el proceso")
 		}
 	}
@@ -366,6 +426,10 @@ func (H *Handler) NewIncident(c echo.Context) error {
 			detail.FechaInicio = time.Now().UTC()
 			detail.FechaFin = time.Now().UTC()
 		}
+	}
+
+	if Incident.Prioridad == 0 { // if the priority is not set, set it to the process priority
+		Incident.Prioridad = uint(Process.Priority)
 	}
 
 	// Create the incident to retrieve the ID
