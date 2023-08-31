@@ -9,22 +9,22 @@ import (
 )
 
 // GetOrgs
-func (H *Handler) GetOrgs(c echo.Context) error {
+func (h *Handler) GetOrgs(c echo.Context) error {
 	var organizaciones []*ORM.Organizacion
-	H.DB.Preload("Procesos").Preload("Clientes").Preload("Usuarios").Preload("Procesos.TicketsProcesos").Find(&organizaciones)
+	h.DB.Preload("Procesos").Preload("Clientes").Preload("Usuarios").Preload("Procesos.TicketsProcesos").Find(&organizaciones)
 	return c.JSON(200, organizaciones)
 }
 
 // PatchJobHistory
-func (H *Handler) PatchJobHistory(c echo.Context) error {
+func (h *Handler) PatchJobHistory(c echo.Context) error {
 	var wg sync.WaitGroup
-	orgs := new(ORM.Organizacion).GetAll(H.DB)
+	orgs := new(ORM.Organizacion).GetAll(h.DB)
 
 	for _, org := range orgs {
 		FoldersAndProcesses := groupProcessesByFolderID(org.Procesos)
 		for folderID, processes := range FoldersAndProcesses {
 			wg.Add(1)
-			go H.handleFolder(org, folderID, processes, &wg)
+			go h.handleFolder(org, folderID, processes, &wg)
 		}
 	}
 	wg.Wait()
@@ -39,7 +39,7 @@ func groupProcessesByFolderID(procesos []*ORM.Proceso) map[uint][]*ORM.Proceso {
 	return result
 }
 
-func (H *Handler) handleFolder(org *ORM.Organizacion, folderID uint, processes []*ORM.Proceso, wg *sync.WaitGroup) {
+func (h *Handler) handleFolder(org *ORM.Organizacion, folderID uint, processes []*ORM.Proceso, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	JobsHistoryResponse := new(UipathAPI.JobsResponse)
@@ -47,18 +47,18 @@ func (H *Handler) handleFolder(org *ORM.Organizacion, folderID uint, processes [
 	_ = org.GetFromApi(LogsHistoryResponse, int(folderID))
 	_ = org.GetFromApi(JobsHistoryResponse, int(folderID))
 
-	existingJobs := H.getExistingJobs(JobsHistoryResponse)
-	H.updateOrCreateJobs(existingJobs, JobsHistoryResponse, processes)
-	H.createLogs(LogsHistoryResponse)
+	existingJobs := h.getExistingJobs(JobsHistoryResponse)
+	h.updateOrCreateJobs(existingJobs, JobsHistoryResponse, processes)
+	h.createLogs(LogsHistoryResponse)
 }
 
-func (H *Handler) getExistingJobs(response *UipathAPI.JobsResponse) map[int]*ORM.JobHistory {
+func (h *Handler) getExistingJobs(response *UipathAPI.JobsResponse) map[int]*ORM.JobHistory {
 	JobIds := make([]int, 0)
 	for _, value := range response.Value {
 		JobIds = append(JobIds, value.ID)
 	}
 	var existingJobs []*ORM.JobHistory
-	H.DB.Where("job_id IN ?", JobIds).Find(&existingJobs)
+	h.DB.Where("job_id IN ?", JobIds).Find(&existingJobs)
 
 	jobMap := make(map[int]*ORM.JobHistory)
 	for _, job := range existingJobs {
@@ -67,7 +67,7 @@ func (H *Handler) getExistingJobs(response *UipathAPI.JobsResponse) map[int]*ORM
 	return jobMap
 }
 
-func (H *Handler) updateOrCreateJobs(existingJobs map[int]*ORM.JobHistory, response *UipathAPI.JobsResponse, processes []*ORM.Proceso) {
+func (h *Handler) updateOrCreateJobs(existingJobs map[int]*ORM.JobHistory, response *UipathAPI.JobsResponse, processes []*ORM.Proceso) {
 	newJobs := make([]*ORM.JobHistory, 0)
 
 	// Construimos un mapa para acceder a los procesos directamente
@@ -100,9 +100,9 @@ func (H *Handler) updateOrCreateJobs(existingJobs map[int]*ORM.JobHistory, respo
 
 			if existingJob, found := existingJobs[value.ID]; found {
 				if existingJob.State != jobEntry.State {
-					H.DB.Model(existingJob).Updates(jobEntry)
+					h.DB.Model(existingJob).Updates(jobEntry)
 					existingJob.MonitorException = false
-					H.DB.Save(existingJob)
+					h.DB.Save(existingJob)
 				}
 			} else {
 				newJobs = append(newJobs, jobEntry)
@@ -111,25 +111,25 @@ func (H *Handler) updateOrCreateJobs(existingJobs map[int]*ORM.JobHistory, respo
 	}
 
 	if len(newJobs) > 0 {
-		H.DB.Create(&newJobs)
+		h.DB.Create(&newJobs)
 	}
 }
 
-func (H *Handler) createLogs(response *UipathAPI.LogResponse) {
+func (h *Handler) createLogs(response *UipathAPI.LogResponse) {
 	newLogs := make([]*ORM.LogJobHistory, 0)
 
 	// Pre-fetch jobs to reduce DB lookups
-	var allJobs []ORM.JobHistory
-	H.DB.Find(&allJobs)
+	var allJobs []*ORM.JobHistory
+	h.DB.Find(&allJobs)
 	jobKeyMap := make(map[string]*ORM.JobHistory)
 	for _, job := range allJobs {
-		jobKeyMap[job.JobKey] = &job
+		jobKeyMap[job.JobKey] = job
 	}
 
 	// Check logs without touching the DB
 	existingLogsMap := make(map[string]bool)
 	var existingLogs []ORM.LogJobHistory
-	H.DB.Find(&existingLogs, "job_key IN (?)", keysFromResponse(response))
+	h.DB.Find(&existingLogs, "job_key IN (?)", keysFromResponse(response))
 	for _, log := range existingLogs {
 		existingLogsMap[log.RawMessage] = true
 	}
@@ -160,7 +160,7 @@ func (H *Handler) createLogs(response *UipathAPI.LogResponse) {
 
 	// Bulk insert the new logs
 	if len(newLogs) > 0 {
-		H.DB.Create(&newLogs)
+		h.DB.Create(&newLogs)
 	}
 }
 
@@ -173,15 +173,15 @@ func keysFromResponse(response *UipathAPI.LogResponse) []string {
 }
 
 // UpdateExceptionJob
-func (H *Handler) UpdateExceptionJob(c echo.Context) error {
+func (h *Handler) UpdateExceptionJob(c echo.Context) error {
 	// query JobKey
 	JobKey := c.QueryParam("JobKey")
 	Job := new(ORM.JobHistory)
-	H.DB.Where("job_key = ?", JobKey).First(&Job)
+	h.DB.Where("job_key = ?", JobKey).First(&Job)
 	if Job.ID == 0 {
 		return c.JSON(404, "Not Found")
 	}
 	Job.MonitorException = true
-	H.DB.Save(&Job)
+	h.DB.Save(&Job)
 	return c.JSON(200, "OK")
 }

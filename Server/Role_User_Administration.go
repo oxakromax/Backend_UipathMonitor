@@ -15,7 +15,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func (H *Handler) GetUsers(c echo.Context) error {
+func (h *Handler) GetUsers(c echo.Context) error {
 	// if query id is not empty, return the user with that id
 	id := c.QueryParam("id")
 	if id != "" {
@@ -26,7 +26,7 @@ func (H *Handler) GetUsers(c echo.Context) error {
 		}
 		// Obtener el usuario de la base de datos
 		User := new(ORM.Usuario)
-		User.Get(H.DB, uint(ID))
+		User.Get(h.DB, uint(ID))
 		if User.ID == 0 {
 			return c.JSON(http.StatusNotFound, "User not found")
 		}
@@ -48,10 +48,10 @@ func (H *Handler) GetUsers(c echo.Context) error {
 	Users := make([]*ORM.Usuario, 0)
 	if query != "" {
 		// Obtener todos los usuarios de la base de datos que coincidan con la consulta
-		H.DB.Where(query).Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Preload("Organizaciones").Find(&Users)
+		h.DB.Where(query).Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Preload("Organizaciones").Find(&Users)
 	} else {
 		// Obtener todos los usuarios de la base de datos
-		Users = new(ORM.Usuario).GetAll(H.DB)
+		Users = new(ORM.Usuario).GetAll(h.DB)
 	}
 	// Ocultar la contraseña de los usuarios
 	for i := range Users {
@@ -263,7 +263,7 @@ func (H *Handler) GetUsers(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, Users)
 }
-func (H *Handler) DeleteUser(c echo.Context) error {
+func (h *Handler) DeleteUser(c echo.Context) error {
 	id := c.QueryParam("id")
 	// Convertir el ID de la consulta en un número entero
 	ID, err := strconv.Atoi(id)
@@ -272,15 +272,15 @@ func (H *Handler) DeleteUser(c echo.Context) error {
 	}
 	// Obtener el usuario de la base de datos
 	User := new(ORM.Usuario)
-	User.Get(H.DB, uint(ID))
+	User.Get(h.DB, uint(ID))
 	if User.ID == 0 {
 		return c.JSON(http.StatusNotFound, "User not found")
 	}
 	// Eliminar el usuario de la base de datos
-	H.DB.Delete(&User)
+	h.DB.Delete(&User)
 	return c.JSON(http.StatusOK, "User deleted")
 }
-func (H *Handler) CreateUser(c echo.Context) error {
+func (h *Handler) CreateUser(c echo.Context) error {
 	// Obtener el usuario de la solicitud
 	User := new(ORM.Usuario)
 	if err := c.Bind(User); err != nil {
@@ -288,7 +288,7 @@ func (H *Handler) CreateUser(c echo.Context) error {
 	}
 	// Verificar si el usuario ya existe en la base de datos
 	checkUser := new(ORM.Usuario)
-	H.DB.Where("email = ?", User.Email).First(&checkUser)
+	h.DB.Where("email = ?", User.Email).First(&checkUser)
 	if checkUser.ID != 0 {
 		return c.JSON(http.StatusConflict, "User already exists")
 	}
@@ -300,7 +300,7 @@ func (H *Handler) CreateUser(c echo.Context) error {
 	}
 	// Asignar el rol de usuario al usuario
 	rol := new(ORM.Rol)
-	H.DB.Where("nombre = ?", "user").First(&rol)
+	h.DB.Where("nombre = ?", "user").First(&rol)
 	User.Roles = append(User.Roles, rol)
 	// Enviar la contraseña al correo del usuario
 	err = functions.SendMail([]string{User.Email}, "Bienvenido a Uipath Monitor", Mail.GetBodyNewUser(Mail.NewUser{Nombre: User.Nombre, Email: User.Email, Password: User.Password}))
@@ -309,12 +309,12 @@ func (H *Handler) CreateUser(c echo.Context) error {
 	}
 	// Guardar el usuario en la base de datos
 	User.Password = string(hash)
-	H.DB.Create(&User)
+	h.DB.Create(&User)
 	// Ocultar la contraseña del usuario
 	User.Password = ""
 	return c.JSON(http.StatusOK, User)
 }
-func (H *Handler) UpdateUser(c echo.Context) error {
+func (h *Handler) UpdateUser(c echo.Context) error {
 	// Obtener ID desde query
 	id := c.QueryParam("id")
 	// Convertir el ID de la consulta en un número entero
@@ -324,7 +324,7 @@ func (H *Handler) UpdateUser(c echo.Context) error {
 	}
 	// Obtener el usuario de la base de datos
 	User := new(ORM.Usuario)
-	User.Get(H.DB, uint(ID))
+	User.Get(h.DB, uint(ID))
 	if User.ID == 0 {
 		return c.JSON(http.StatusNotFound, "User not found")
 	}
@@ -333,28 +333,28 @@ func (H *Handler) UpdateUser(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, "Invalid request")
 	}
 	// Sobre escribir roles del usuario
-	err = H.DB.Model(&User).Association("Roles").Replace(User.Roles)
+	err = h.DB.Model(&User).Association("Roles").Replace(User.Roles)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, "Error while updating user")
 	}
 	// Rellenar campos faltantes
-	User.FillEmptyFields(H.DB)
+	User.FillEmptyFields(h.DB)
 	// Guardar el usuario en la base de datos
-	H.DB.Save(&User)
+	h.DB.Save(&User)
 	// Ocultar la contraseña del usuario
 	User.Password = ""
 	return c.JSON(http.StatusOK, User)
 }
 
-func (H *Handler) GetAllRoles(c echo.Context) error {
+func (h *Handler) GetAllRoles(c echo.Context) error {
 	// Get user from token
-	User, err := H.GetUserJWT(c)
+	User, err := h.GetUserJWT(c)
 	if err != nil {
 		return err
 	}
 	// Obtener los roles de la base de datos
 	Roles := new([]*ORM.Rol)
-	H.DB.Order("Nombre").Find(&Roles)
+	h.DB.Order("Nombre").Find(&Roles)
 	// Si el usuario no es admin eliminar los roles de admin
 	// además siempre eliminar el rol de monitor
 	// para verificar usa User.HasRole("admin")

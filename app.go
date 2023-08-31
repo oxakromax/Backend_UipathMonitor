@@ -92,7 +92,7 @@ func main() {
 	}
 }
 
-func middlewares(e *echo.Echo, H *Server.Handler) {
+func middlewares(e *echo.Echo, h *Server.Handler) {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
@@ -101,11 +101,11 @@ func middlewares(e *echo.Echo, H *Server.Handler) {
 		AllowHeaders: []string{echo.HeaderAuthorization, echo.HeaderContentType, echo.HeaderAccept},
 	}))
 	e.Use(echojwt.WithConfig(echojwt.Config{
-		SigningKey:    []byte(H.TokenKey),
+		SigningKey:    []byte(h.TokenKey),
 		SigningMethod: "HS512",
 		Skipper: func(c echo.Context) bool {
 			// Skip authentication for signup and login requests
-			for _, route := range H.UniversalRoutes {
+			for _, route := range h.UniversalRoutes {
 				if strings.EqualFold(route, c.Path()) {
 					return true
 				}
@@ -116,8 +116,8 @@ func middlewares(e *echo.Echo, H *Server.Handler) {
 			return c.JSON(http.StatusUnauthorized, "Invalid or expired JWT")
 		},
 	}))
-	e.Use(H.CheckDBState()) // Check if the database is connected
-	e.Use(H.CheckRoleMiddleware())
+	e.Use(h.CheckDBState()) // Check if the database is connected
+	e.Use(h.CheckRoleMiddleware())
 }
 
 func routes(e *echo.Echo, H *Server.Handler) {

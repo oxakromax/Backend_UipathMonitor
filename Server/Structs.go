@@ -21,7 +21,7 @@ type Handler struct {
 	DBKey               string
 }
 
-func (H *Handler) RefreshDataBase(e *echo.Echo) {
+func (h *Handler) RefreshDataBase(e *echo.Echo) {
 	// Crear un mapa para las rutas de Echo
 	echoRoutesMap := make(map[string]ORM.Route)
 	for _, r := range e.Routes() {
@@ -31,7 +31,7 @@ func (H *Handler) RefreshDataBase(e *echo.Echo) {
 
 	// Obtener todas las rutas de la base de datos
 	var dbRoutes []ORM.Route
-	H.DB.Find(&dbRoutes)
+	h.DB.Find(&dbRoutes)
 
 	// Mapa para las rutas de la base de datos
 	dbRoutesMap := make(map[string]ORM.Route)
@@ -44,7 +44,7 @@ func (H *Handler) RefreshDataBase(e *echo.Echo) {
 	for key, route := range echoRoutesMap {
 		if _, exists := dbRoutesMap[key]; !exists {
 			// Si la ruta no existe en la base de datos, agregarla
-			H.DB.Create(route)
+			h.DB.Create(route)
 		}
 		// (No es necesario agregarlo a la lista, porque ya está en la base de datos o se ha creado)
 	}
@@ -53,63 +53,63 @@ func (H *Handler) RefreshDataBase(e *echo.Echo) {
 	for key, route := range dbRoutesMap {
 		if _, exists := echoRoutesMap[key]; !exists {
 			// Si la ruta no existe en las rutas de Echo, eliminarla definitivamente
-			H.DB.Exec("DELETE FROM roles_routes WHERE route_id = ?", route.ID)
-			H.DB.Exec("DELETE FROM routes WHERE id = ?", route.ID)
+			h.DB.Exec("DELETE FROM roles_routes WHERE route_id = ?", route.ID)
+			h.DB.Exec("DELETE FROM routes WHERE id = ?", route.ID)
 		}
 	}
 
 	// Obtener todas las rutas de la base de datos
-	routes := new(ORM.Route).GetAll(H.DB)
+	routes := new(ORM.Route).GetAll(h.DB)
 	// Crear o actualizar el rol de administrador con las rutas definidas en Echo
 	adminRole := ORM.Rol{
 		Nombre:      "admin",
 		Description: "El rol de administrador tiene acceso a todas las rutas del sistema. ",
 	}
 	checkAdminRole := new(ORM.Rol)
-	H.DB.Where("nombre = ?", "admin").First(&checkAdminRole)
+	h.DB.Where("nombre = ?", "admin").First(&checkAdminRole)
 	if checkAdminRole.ID == 0 {
 		// Si el rol de administrador no existe, crearlo y agregarle las rutas
-		H.DB.Create(&adminRole)
+		h.DB.Create(&adminRole)
 	} else {
 		// Si el rol de administrador ya existe, actualizar sus rutas
 		adminRole = *checkAdminRole
 	}
 	adminRole.Rutas = routes
 	// Reemplazar las rutas del rol de administrador con las rutas actualizadas
-	_ = H.DB.Model(&adminRole).Association("Rutas").Replace(adminRole.Rutas)
+	_ = h.DB.Model(&adminRole).Association("Rutas").Replace(adminRole.Rutas)
 	AdminUser := ORM.Usuario{}
 	// Obtener el usuario 1 (administrador) de la base de datos
-	H.DB.First(&AdminUser, 1) // El usuario administrador siempre tendrá el ID 1
+	h.DB.First(&AdminUser, 1) // El usuario administrador siempre tendrá el ID 1
 	if AdminUser.ID == 0 {
 		// Si el usuario administrador no existe, crearlo
-		Procesos := new(ORM.Proceso).GetAll(H.DB)
-		Orgs := new(ORM.Organizacion).GetAll(H.DB)
+		Procesos := new(ORM.Proceso).GetAll(h.DB)
+		Orgs := new(ORM.Organizacion).GetAll(h.DB)
 		AdminUser = ORM.Usuario{
 			Nombre:   "admin",
 			Apellido: "admin",
 			Email:    "admin@admin.cl",
 		}
 		AdminUser.SetPassword("test")
-		H.DB.Save(&AdminUser)
-		_ = H.DB.Model(&AdminUser).Association("Roles").Replace([]ORM.Rol{adminRole})
-		_ = H.DB.Model(&AdminUser).Association("Procesos").Replace(Procesos)
-		_ = H.DB.Model(&AdminUser).Association("Organizaciones").Replace(Orgs)
+		h.DB.Save(&AdminUser)
+		_ = h.DB.Model(&AdminUser).Association("Roles").Replace([]ORM.Rol{adminRole})
+		_ = h.DB.Model(&AdminUser).Association("Procesos").Replace(Procesos)
+		_ = h.DB.Model(&AdminUser).Association("Organizaciones").Replace(Orgs)
 	}
 	// Encriptar datos sensibles de las organizaciones
-	orgs := new(ORM.Organizacion).GetAll(H.DB)
+	orgs := new(ORM.Organizacion).GetAll(h.DB)
 	for _, org := range orgs {
-		_, err := functions.DecryptAES(H.DBKey, org.AppID)
+		_, err := functions.DecryptAES(h.DBKey, org.AppID)
 		if err != nil {
-			org.AppID, _ = functions.EncryptAES(H.DBKey, org.AppID)
+			org.AppID, _ = functions.EncryptAES(h.DBKey, org.AppID)
 		}
-		_, err = functions.DecryptAES(H.DBKey, org.AppSecret)
+		_, err = functions.DecryptAES(h.DBKey, org.AppSecret)
 		if err != nil {
-			org.AppSecret, _ = functions.EncryptAES(H.DBKey, org.AppSecret)
+			org.AppSecret, _ = functions.EncryptAES(h.DBKey, org.AppSecret)
 		}
 		if err == nil {
 			continue
 		}
-		H.DB.Save(org)
+		h.DB.Save(org)
 	}
 	type RoleDefinition struct {
 		Name        string
@@ -153,7 +153,7 @@ func (H *Handler) RefreshDataBase(e *echo.Echo) {
 			Rutas:       make([]*ORM.Route, 0),
 			Description: def.Description,
 		}
-		H.DB.FirstOrCreate(&role, "nombre = ?", def.Name)
+		h.DB.FirstOrCreate(&role, "nombre = ?", def.Name)
 		rolesMap[def.Name] = role
 	}
 
@@ -181,7 +181,7 @@ func (H *Handler) RefreshDataBase(e *echo.Echo) {
 
 	// Reemplazar asociaciones en la base de datos
 	for _, role := range rolesMap {
-		_ = H.DB.Model(role).Association("Rutas").Replace(role.Rutas)
+		_ = h.DB.Model(role).Association("Rutas").Replace(role.Rutas)
 	}
 
 	// Aquí puedes agregar el código para el usuario monitor si es necesario
@@ -189,7 +189,7 @@ func (H *Handler) RefreshDataBase(e *echo.Echo) {
 	monitorUser := new(ORM.Usuario)
 	Username := os.Getenv("MONITOR_USER")
 	Password := os.Getenv("MONITOR_PASS")
-	H.DB.Where("email = ?", Username).First(&monitorUser)
+	h.DB.Where("email = ?", Username).First(&monitorUser)
 	if monitorUser.ID == 0 {
 		monitorUser = &ORM.Usuario{
 			Email:    Username,
@@ -197,11 +197,11 @@ func (H *Handler) RefreshDataBase(e *echo.Echo) {
 			Apellido: "",
 		}
 		monitorUser.SetPassword(Password)
-		H.DB.Create(&monitorUser)
-		_ = H.DB.Model(&monitorUser).Association("Roles").Replace([]ORM.Rol{*rolesMap["monitor"]})
+		h.DB.Create(&monitorUser)
+		_ = h.DB.Model(&monitorUser).Association("Roles").Replace([]ORM.Rol{*rolesMap["monitor"]})
 	} else {
 		monitorUser.SetPassword(Password)
-		H.DB.Save(&monitorUser)
+		h.DB.Save(&monitorUser)
 	}
 	// "Incidente": 1,
 	// "Mejora": 2,
@@ -210,7 +210,7 @@ func (H *Handler) RefreshDataBase(e *echo.Echo) {
 	TicketsType := []string{"Incidente", "Mejora", "Mantenimiento", "Otro"}
 	for _, ticketType := range TicketsType {
 		ticket := new(ORM.TicketsTipo)
-		H.DB.Where("nombre = ?", ticketType).First(&ticket)
+		h.DB.Where("nombre = ?", ticketType).First(&ticket)
 		if ticket.ID == 0 {
 			Diagnostico := false
 			if ticketType == "Incidente" {
@@ -220,12 +220,12 @@ func (H *Handler) RefreshDataBase(e *echo.Echo) {
 				Nombre:              ticketType,
 				NecesitaDiagnostico: Diagnostico,
 			}
-			H.DB.Create(&ticket)
+			h.DB.Create(&ticket)
 		}
 	}
 }
 
-func (H *Handler) PingAuth(c echo.Context) error {
+func (h *Handler) PingAuth(c echo.Context) error {
 	// Si el usuario no está autenticado, retornar error
 	user := c.Get("user").(*jwt.Token)
 	claims := user.Claims.(jwt.MapClaims)
@@ -241,15 +241,15 @@ func (H *Handler) PingAuth(c echo.Context) error {
 }
 
 // GetTime
-func (H *Handler) GetTime(c echo.Context) error {
+func (h *Handler) GetTime(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"time": time.Now().UTC(),
 	})
 }
 
-func (H *Handler) GetTicketsType(c echo.Context) error {
+func (h *Handler) GetTicketsType(c echo.Context) error {
 	TicketsType := make([]*ORM.TicketsTipo, 0)
-	H.DB.Find(&TicketsType)
+	h.DB.Find(&TicketsType)
 	MapNameID := make(map[string]uint)
 	for _, ticketType := range TicketsType {
 		MapNameID[ticketType.Nombre] = ticketType.ID

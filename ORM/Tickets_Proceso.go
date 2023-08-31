@@ -24,21 +24,21 @@ type TicketsProceso struct {
 	Detalles         []*TicketsDetalle `gorm:"foreignKey:TicketID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
 }
 
-func (this *TicketsProceso) Get(db *gorm.DB, id uint) {
-	db.Preload("Proceso").Preload("Detalles").Preload("Tipo").First(&this, id)
+func (tp *TicketsProceso) Get(db *gorm.DB, id uint) {
+	db.Preload("Proceso").Preload("Detalles").Preload("Tipo").First(&tp, id)
 }
 
-func (this *TicketsProceso) GetTipo(db *gorm.DB) string {
+func (tp *TicketsProceso) GetTipo(db *gorm.DB) string {
 	// "Incidente": 1,
 	// "Mejora": 2,
 	// "Mantenimiento": 3,
 	// "Otro": 4,
-	if this.Tipo == nil {
+	if tp.Tipo == nil {
 		Tipo := &TicketsTipo{}
-		db.First(&Tipo, this.TipoID)
-		this.Tipo = Tipo
+		db.First(&Tipo, tp.TipoID)
+		tp.Tipo = Tipo
 	}
-	return this.Tipo.Nombre
+	return tp.Tipo.Nombre
 }
 
 // TableName IncidenteProcesos Tablename: incidentes_procesos

@@ -10,9 +10,9 @@ import (
 	"github.com/oxakromax/Backend_UipathMonitor/UipathAPI"
 )
 
-func (H *Handler) UpdateUipathProcess(c echo.Context) error {
+func (h *Handler) UpdateUipathProcess(c echo.Context) error {
 	// if this route is reached, is a manual solicitation to update every process in the database, and add new ones detected
-	Orgs := new(ORM.Organizacion).GetAll(H.DB)
+	Orgs := new(ORM.Organizacion).GetAll(h.DB)
 	var wg = new(sync.WaitGroup)
 	errorChannel := make(chan error, 1000)
 	var errorList []error
@@ -40,7 +40,7 @@ func (H *Handler) UpdateUipathProcess(c echo.Context) error {
 					for _, proceso := range procesos {
 						// Check if process exists in uipath
 						exists := false
-						H.DB.Find(proceso)
+						h.DB.Find(proceso)
 						for _, Process := range ProcessUipath.Value {
 							if Process.ID == int(proceso.UipathProcessID) {
 								exists = true
@@ -54,7 +54,7 @@ func (H *Handler) UpdateUipathProcess(c echo.Context) error {
 									modified = true
 								}
 								if modified {
-									H.DB.Save(proceso)
+									h.DB.Save(proceso)
 								}
 								break
 							}
@@ -73,7 +73,7 @@ func (H *Handler) UpdateUipathProcess(c echo.Context) error {
 									proceso.Alias = "[DELETED] " + proceso.Alias
 								}
 							}
-							H.DB.Save(proceso)
+							h.DB.Save(proceso)
 						}
 					}
 				}(FolderID, procesos)
@@ -97,7 +97,7 @@ func (H *Handler) UpdateUipathProcess(c echo.Context) error {
 					}
 					for _, Process := range Processes.Value {
 						ORMProcess := new(ORM.Proceso)
-						H.DB.Where("folderid = ? AND uipath_process_iD = ?", Folders.ID, Process.ID).First(ORMProcess)
+						h.DB.Where("folderid = ? AND uipath_process_iD = ?", Folders.ID, Process.ID).First(ORMProcess)
 						if ORMProcess.ID == 0 {
 							ORMProcess = &ORM.Proceso{
 								Nombre:           Process.Name,
@@ -109,7 +109,7 @@ func (H *Handler) UpdateUipathProcess(c echo.Context) error {
 								ErrorTolerance:   999,
 								FatalTolerance:   999,
 							}
-							H.DB.Create(ORMProcess)
+							h.DB.Create(ORMProcess)
 						}
 					}
 				}()

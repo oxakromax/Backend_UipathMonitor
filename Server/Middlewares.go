@@ -9,12 +9,12 @@ import (
 	"github.com/oxakromax/Backend_UipathMonitor/ORM"
 )
 
-func (H *Handler) CheckDBState() echo.MiddlewareFunc {
+func (h *Handler) CheckDBState() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			// Check if the database is connected
 			// if not then send a 503 Service Unavailable
-			if H.DB.Error == nil {
+			if h.DB.Error == nil {
 				return next(c)
 			}
 			return echo.ErrServiceUnavailable
@@ -22,20 +22,19 @@ func (H *Handler) CheckDBState() echo.MiddlewareFunc {
 	}
 }
 
-func (H *Handler) CheckRoleMiddleware() echo.MiddlewareFunc {
+func (h *Handler) CheckRoleMiddleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			for _, route := range H.UniversalRoutes {
+			for _, route := range h.UniversalRoutes {
 				if strings.EqualFold(route, c.Path()) {
 					return next(c) // Permitir el acceso a la ruta
 				}
 			}
 			// Verificar si el usuario está autenticado y tiene un rol permitido
-			User, err := H.GetUserJWT(c)
+			User, err := h.GetUserJWT(c)
 			if err != nil {
 				return err
 			}
-			// Ahora puedes usar la variable User directamente
 			for _, UserRole := range User.Roles { // Iterar sobre los roles del usuario
 				for _, route := range UserRole.Rutas {
 					if strings.EqualFold(route.Route, c.Path()) && strings.EqualFold(route.Method, c.Request().Method) {
@@ -48,7 +47,7 @@ func (H *Handler) CheckRoleMiddleware() echo.MiddlewareFunc {
 	}
 }
 
-func (H *Handler) GetUserJWT(c echo.Context) (*ORM.Usuario, error) {
+func (h *Handler) GetUserJWT(c echo.Context) (*ORM.Usuario, error) {
 	userClaim, ok := c.Get("user").(*jwt.Token)
 	if !ok {
 		return nil, echo.ErrUnauthorized

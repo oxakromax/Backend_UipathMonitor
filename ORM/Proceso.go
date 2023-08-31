@@ -22,11 +22,11 @@ type JobHistory struct {
 	Logs             []*LogJobHistory `gorm:"foreignKey:JobID"`
 }
 
-func (this *JobHistory) Get(db *gorm.DB, id uint) {
+func (jh *JobHistory) Get(db *gorm.DB, id uint) {
 	// preload logs and order logs by newest first (timestamp)
 	db.Preload("Logs", func(db *gorm.DB) *gorm.DB {
 		return db.Order("time_stamp DESC")
-	}).First(&this, id)
+	}).First(&jh, id)
 }
 
 type LogJobHistory struct {
@@ -77,8 +77,8 @@ func (Proceso) GetAll(db *gorm.DB) []*Proceso {
 	return procesos
 }
 
-func (this *Proceso) Get(db *gorm.DB, id uint) {
-	db.Preload("Organizacion").Preload("TicketsProcesos").Preload("Clientes").Preload("Usuarios").Preload("TicketsProcesos.Detalles").Preload("JobsHistory").First(&this, id)
+func (p *Proceso) Get(db *gorm.DB, id uint) {
+	db.Preload("Organizacion").Preload("TicketsProcesos").Preload("Clientes").Preload("Usuarios").Preload("TicketsProcesos.Detalles").Preload("JobsHistory").First(&p, id)
 }
 
 func (Proceso) GetByFolder(db *gorm.DB, folderID uint) []*Proceso {
@@ -87,12 +87,12 @@ func (Proceso) GetByFolder(db *gorm.DB, folderID uint) []*Proceso {
 	return procesos
 }
 
-func (this *Proceso) GetEmails() []string {
+func (p *Proceso) GetEmails() []string {
 	var emails []string
-	for _, cliente := range this.Clientes {
+	for _, cliente := range p.Clientes {
 		emails = append(emails, cliente.Email)
 	}
-	for _, usuario := range this.Usuarios {
+	for _, usuario := range p.Usuarios {
 		emails = append(emails, usuario.Email)
 	}
 	return emails
@@ -104,44 +104,44 @@ func GetListByUser(db *gorm.DB, userID uint) []*Proceso {
 	return procesos
 }
 
-func (this *Proceso) RemoveClients(db *gorm.DB, list []int) error {
+func (p *Proceso) RemoveClients(db *gorm.DB, list []int) error {
 	var clientes []*Cliente
 	for _, id := range list {
 		cliente := &Cliente{}
 		cliente.Get(db, uint(id))
 		clientes = append(clientes, cliente)
 	}
-	return db.Model(&this).Association("Clientes").Delete(&clientes)
+	return db.Model(&p).Association("Clientes").Delete(&clientes)
 }
 
-func (this *Proceso) AddClients(db *gorm.DB, list []int) error {
+func (p *Proceso) AddClients(db *gorm.DB, list []int) error {
 	var clientes []*Cliente
 	for _, id := range list {
 		cliente := &Cliente{}
 		cliente.Get(db, uint(id))
 		clientes = append(clientes, cliente)
 	}
-	return db.Model(&this).Association("Clientes").Append(&clientes)
+	return db.Model(&p).Association("Clientes").Append(&clientes)
 }
 
-func (this Proceso) RemoveUsers(db *gorm.DB, list []int) error {
+func (p Proceso) RemoveUsers(db *gorm.DB, list []int) error {
 	var usuarios []*Usuario
 	for _, id := range list {
 		usuario := &Usuario{}
 		usuario.Get(db, uint(id))
 		usuarios = append(usuarios, usuario)
 	}
-	return db.Model(&this).Association("Usuarios").Delete(&usuarios)
+	return db.Model(&p).Association("Usuarios").Delete(&usuarios)
 
 }
 
-func (this Proceso) AddUsers(db *gorm.DB, list []int) error {
+func (p Proceso) AddUsers(db *gorm.DB, list []int) error {
 	var usuarios []*Usuario
 	for _, id := range list {
 		usuario := &Usuario{}
 		usuario.Get(db, uint(id))
 		usuarios = append(usuarios, usuario)
 	}
-	return db.Model(&this).Association("Usuarios").Append(&usuarios)
+	return db.Model(&p).Association("Usuarios").Append(&usuarios)
 
 }

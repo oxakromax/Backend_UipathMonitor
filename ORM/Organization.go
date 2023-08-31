@@ -176,6 +176,7 @@ func (o *Organizacion) GetFromApi(structType interface{}, folderid ...int) error
 	default:
 		return errors.New("tipo de estructura no soportada, debe ser un puntero a una de las siguientes estructuras: FoldersResponse, LogResponse, ReleasesResponse, JobsResponse")
 	}
+
 	if err != nil {
 		return err
 	}

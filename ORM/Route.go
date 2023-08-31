@@ -17,6 +17,6 @@ func (Route) GetAll(db *gorm.DB) []*Route {
 	return routes
 }
 
-func (this *Route) Get(db *gorm.DB, id uint) {
-	db.Preload("Roles").First(&this, id)
+func (r *Route) Get(db *gorm.DB, id uint) {
+	db.Preload("Roles").First(&r, id)
 }

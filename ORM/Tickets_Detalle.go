@@ -16,8 +16,8 @@ type TicketsDetalle struct {
 	Diagnostico bool      `gorm:"default:false" json:"IsDiagnostic"`
 }
 
-func (this *TicketsDetalle) Get(db *gorm.DB, id uint) {
-	db.First(&this, id)
+func (td *TicketsDetalle) Get(db *gorm.DB, id uint) {
+	db.First(&td, id)
 }
 
 // TableName TableName IncidentesDetalles Tablename: incidentes_detalle

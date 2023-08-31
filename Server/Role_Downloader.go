@@ -13,9 +13,9 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-func (H *Handler) GetOrgData(c echo.Context) error {
+func (h *Handler) GetOrgData(c echo.Context) error {
 
-	User, err := H.GetUserJWT(c)
+	User, err := h.GetUserJWT(c)
 	if err != nil {
 		return err
 	}
@@ -39,7 +39,7 @@ func (H *Handler) GetOrgData(c echo.Context) error {
 		if err != nil {
 			return c.JSON(400, "Invalid organization ID")
 		}
-		OrgData.Get(H.DB, uint(OrgIDInt))
+		OrgData.Get(h.DB, uint(OrgIDInt))
 		if OrgData.ID == 0 {
 			return c.JSON(404, "Organization not found")
 		}
@@ -52,9 +52,9 @@ func (H *Handler) GetOrgData(c echo.Context) error {
 		CantidadTickets:   make(map[string]int),
 	}
 	for _, proceso := range OrgData.Procesos {
-		proceso.Get(H.DB, proceso.ID) // obtener toda la data del proceso
+		proceso.Get(h.DB, proceso.ID) // obtener toda la data del proceso
 		for _, ticket := range proceso.TicketsProcesos {
-			ticket.Get(H.DB, ticket.ID) // obtener toda la data del ticket
+			ticket.Get(h.DB, ticket.ID) // obtener toda la data del ticket
 			orgSummary.CantidadTickets[ticket.Estado]++
 		}
 	}
@@ -96,7 +96,7 @@ func (H *Handler) GetOrgData(c echo.Context) error {
 	file.SetCellValue(sheetName, "E2", "Processes in charge")
 	ActualRow = 3
 	for _, cliente := range OrgData.Clientes {
-		cliente.Get(H.DB, cliente.ID) // obtener toda la data del cliente
+		cliente.Get(h.DB, cliente.ID) // obtener toda la data del cliente
 		file.SetCellValue(sheetName, "A"+strconv.Itoa(ActualRow), cliente.ID)
 		file.SetCellValue(sheetName, "B"+strconv.Itoa(ActualRow), cliente.Nombre)
 		file.SetCellValue(sheetName, "C"+strconv.Itoa(ActualRow), cliente.Apellido)
@@ -120,7 +120,7 @@ func (H *Handler) GetOrgData(c echo.Context) error {
 	file.SetCellValue(sheetName, "H2", "Average Time per Ticket")
 	ActualRow = 3
 	for _, usuario := range OrgData.Usuarios {
-		usuario.Get(H.DB, usuario.ID) // obtener toda la data del usuario
+		usuario.Get(h.DB, usuario.ID) // obtener toda la data del usuario
 		file.SetCellValue(sheetName, "A"+strconv.Itoa(ActualRow), usuario.ID)
 		file.SetCellValue(sheetName, "B"+strconv.Itoa(ActualRow), usuario.Nombre)
 		file.SetCellValue(sheetName, "C"+strconv.Itoa(ActualRow), usuario.Apellido)
@@ -132,9 +132,9 @@ func (H *Handler) GetOrgData(c echo.Context) error {
 		AverageDuration := new(time.Duration)
 		Participation := 0
 		for _, proceso := range OrgData.Procesos {
-			proceso.Get(H.DB, proceso.ID) // obtener toda la data del proceso
+			proceso.Get(h.DB, proceso.ID) // obtener toda la data del proceso
 			for _, ticketsProceso := range proceso.TicketsProcesos {
-				ticketsProceso.Get(H.DB, ticketsProceso.ID) // obtener toda la data del ticket
+				ticketsProceso.Get(h.DB, ticketsProceso.ID) // obtener toda la data del ticket
 				ParticipationBool := false
 				if ticketsProceso.Estado == "Finalizado" {
 					// MUST BE THE LAST USER IN THE TICKET
@@ -162,7 +162,7 @@ func (H *Handler) GetOrgData(c echo.Context) error {
 		}
 		file.SetCellValue(sheetName, "F"+strconv.Itoa(ActualRow), TicketsResolved)
 		file.SetCellValue(sheetName, "G"+strconv.Itoa(ActualRow), TicketsPending)
-		file.SetCellValue(sheetName, "H"+strconv.Itoa(ActualRow), AverageDuration)
+		file.SetCellValue(sheetName, "h"+strconv.Itoa(ActualRow), AverageDuration)
 		ActualRow++
 	}
 	// Add Processes Sheet to Excel file
@@ -187,7 +187,7 @@ func (H *Handler) GetOrgData(c echo.Context) error {
 	file.SetCellValue(sheetName, "N2", "Clients Emails")
 	ActualRow = 3
 	for _, proceso := range OrgData.Procesos {
-		proceso.Get(H.DB, proceso.ID) // obtener toda la data del proceso
+		proceso.Get(h.DB, proceso.ID) // obtener toda la data del proceso
 		file.SetCellValue(sheetName, "A"+strconv.Itoa(ActualRow), proceso.ID)
 		file.SetCellValue(sheetName, "B"+strconv.Itoa(ActualRow), proceso.Nombre)
 		file.SetCellValue(sheetName, "C"+strconv.Itoa(ActualRow), proceso.Alias)
@@ -195,7 +195,7 @@ func (H *Handler) GetOrgData(c echo.Context) error {
 		file.SetCellValue(sheetName, "E"+strconv.Itoa(ActualRow), proceso.Foldername)
 		file.SetCellValue(sheetName, "F"+strconv.Itoa(ActualRow), proceso.WarningTolerance)
 		file.SetCellValue(sheetName, "G"+strconv.Itoa(ActualRow), proceso.ErrorTolerance)
-		file.SetCellValue(sheetName, "H"+strconv.Itoa(ActualRow), proceso.FatalTolerance)
+		file.SetCellValue(sheetName, "h"+strconv.Itoa(ActualRow), proceso.FatalTolerance)
 		file.SetCellValue(sheetName, "I"+strconv.Itoa(ActualRow), proceso.ActiveMonitoring)
 		file.SetCellValue(sheetName, "J"+strconv.Itoa(ActualRow), proceso.Priority)
 		file.SetCellValue(sheetName, "K"+strconv.Itoa(ActualRow), proceso.MaxQueueTime)
@@ -218,8 +218,8 @@ func (H *Handler) GetOrgData(c echo.Context) error {
 	for _, proceso := range OrgData.Procesos {
 		ProcesosID = append(ProcesosID, proceso.ID)
 	}
-	H.DB.Preload("Detalles").Preload("Tipo").Where("proceso_id IN ?", ProcesosID).Find(&TicketsProcesos)
-	H.sheetTickets(file, TicketsProcesos)
+	h.DB.Preload("Detalles").Preload("Tipo").Where("proceso_id IN ?", ProcesosID).Find(&TicketsProcesos)
+	h.sheetTickets(file, TicketsProcesos)
 	// Write Excel file to memory buffer
 	buf := new(bytes.Buffer)
 	if err := file.Write(buf); err != nil {
@@ -235,7 +235,7 @@ func (H *Handler) GetOrgData(c echo.Context) error {
 
 }
 
-func (H *Handler) sheetTickets(file *excelize.File, Tickets []*ORM.TicketsProceso) {
+func (h *Handler) sheetTickets(file *excelize.File, Tickets []*ORM.TicketsProceso) {
 	// Add Tickets Sheet to Excel file
 	sheetName := "Tickets"
 	file.NewSheet(sheetName)
@@ -278,19 +278,19 @@ func (H *Handler) sheetTickets(file *excelize.File, Tickets []*ORM.TicketsProces
 				Duration += detalle.FechaFin.Sub(detalle.FechaInicio)
 			}
 		}
-		file.SetCellValue(sheetName, "H"+strconv.Itoa(ActualRow), StartDate)
+		file.SetCellValue(sheetName, "h"+strconv.Itoa(ActualRow), StartDate)
 		file.SetCellValue(sheetName, "I"+strconv.Itoa(ActualRow), EndDate)
 		file.SetCellValue(sheetName, "J"+strconv.Itoa(ActualRow), Duration)
 		file.SetCellValue(sheetName, "K"+strconv.Itoa(ActualRow), len(ticket.Detalles))
-		file.SetCellValue(sheetName, "L"+strconv.Itoa(ActualRow), ticket.GetTipo(H.DB))
+		file.SetCellValue(sheetName, "L"+strconv.Itoa(ActualRow), ticket.GetTipo(h.DB))
 		ActualRow++
 	}
 }
 
 // GetUserData returns an excel file with the user data
 // if there's more than 1 id in id query param separated by coma, it will return a zip with excel files of users requested
-func (H *Handler) GetUserData(c echo.Context) error {
-	User, err := H.GetUserJWT(c)
+func (h *Handler) GetUserData(c echo.Context) error {
+	User, err := h.GetUserJWT(c)
 	if err != nil {
 		return err
 	}
@@ -306,7 +306,7 @@ func (H *Handler) GetUserData(c echo.Context) error {
 			return c.JSON(400, "Invalid user ID:"+ID)
 		}
 		UserData := new(ORM.Usuario)
-		UserData.Get(H.DB, uint(UserIDInt))
+		UserData.Get(h.DB, uint(UserIDInt))
 		if UserData.ID == 0 {
 			// User not found, continue with the next one
 			continue
@@ -330,14 +330,14 @@ func (H *Handler) GetUserData(c echo.Context) error {
 		file.SetCellValue(sheetName, "A5", "Processes in charge")
 		file.SetCellValue(sheetName, "B5", len(UserData.Procesos))
 		file.SetCellValue(sheetName, "A6", "Tickets Closed")
-		TicketsResolved := UserData.GetCantityTicketsClosed(H.DB)
+		TicketsResolved := UserData.GetCantityTicketsClosed(h.DB)
 		file.SetCellValue(sheetName, "B6", TicketsResolved)
 		file.SetCellValue(sheetName, "A7", "Tickets Pending")
-		file.SetCellValue(sheetName, "B7", UserData.GetCantityTicketsPending(H.DB))
+		file.SetCellValue(sheetName, "B7", UserData.GetCantityTicketsPending(h.DB))
 		file.SetCellValue(sheetName, "A8", "Average Time per Ticket")
-		file.SetCellValue(sheetName, "B8", UserData.AverageDurationPerTicket(H.DB))
+		file.SetCellValue(sheetName, "B8", UserData.AverageDurationPerTicket(h.DB))
 		file.SetCellValue(sheetName, "A9", "Average Time spent per day")
-		file.SetCellValue(sheetName, "B9", UserData.AverageTimeSpentPerDay(H.DB))
+		file.SetCellValue(sheetName, "B9", UserData.AverageTimeSpentPerDay(h.DB))
 		file.SetCellValue(sheetName, "A10", "Organizations")
 		file.SetCellValue(sheetName, "B10", len(UserData.Organizaciones))
 
@@ -364,7 +364,7 @@ func (H *Handler) GetUserData(c echo.Context) error {
 		file.SetCellValue(sheetName, "O2", "ID Organization")
 		ActualRow := 3
 		for _, proceso := range UserData.Procesos {
-			proceso.Get(H.DB, proceso.ID) // obtener toda la data del proceso
+			proceso.Get(h.DB, proceso.ID) // obtener toda la data del proceso
 			file.SetCellValue(sheetName, "A"+strconv.Itoa(ActualRow), proceso.ID)
 			file.SetCellValue(sheetName, "B"+strconv.Itoa(ActualRow), proceso.Nombre)
 			file.SetCellValue(sheetName, "C"+strconv.Itoa(ActualRow), proceso.Alias)
@@ -372,7 +372,7 @@ func (H *Handler) GetUserData(c echo.Context) error {
 			file.SetCellValue(sheetName, "E"+strconv.Itoa(ActualRow), proceso.Foldername)
 			file.SetCellValue(sheetName, "F"+strconv.Itoa(ActualRow), proceso.WarningTolerance)
 			file.SetCellValue(sheetName, "G"+strconv.Itoa(ActualRow), proceso.ErrorTolerance)
-			file.SetCellValue(sheetName, "H"+strconv.Itoa(ActualRow), proceso.FatalTolerance)
+			file.SetCellValue(sheetName, "h"+strconv.Itoa(ActualRow), proceso.FatalTolerance)
 			file.SetCellValue(sheetName, "I"+strconv.Itoa(ActualRow), proceso.ActiveMonitoring)
 			file.SetCellValue(sheetName, "J"+strconv.Itoa(ActualRow), proceso.Priority)
 			file.SetCellValue(sheetName, "K"+strconv.Itoa(ActualRow), proceso.MaxQueueTime)
@@ -380,7 +380,7 @@ func (H *Handler) GetUserData(c echo.Context) error {
 			Participation := 0
 			TimeSpent := new(time.Duration)
 			for _, ticketsProceso := range proceso.TicketsProcesos {
-				ticketsProceso.Get(H.DB, ticketsProceso.ID) // obtener toda la data del ticket
+				ticketsProceso.Get(h.DB, ticketsProceso.ID) // obtener toda la data del ticket
 				ParticipationBool := false
 				for _, ticketsDetalle := range ticketsProceso.Detalles {
 					if uint(ticketsDetalle.UsuarioID) == UserData.ID {
@@ -420,7 +420,7 @@ func (H *Handler) GetUserData(c echo.Context) error {
 		file.SetCellValue(sheetName, "L2", "Type")
 		ActualRow = 3
 		var tickets []*ORM.TicketsProceso
-		H.DB.Preload("Detalles", "usuario_id = ?", UserData.ID).Find(&tickets)
+		h.DB.Preload("Detalles", "usuario_id = ?", UserData.ID).Find(&tickets)
 		for _, ticket := range tickets {
 			if len(ticket.Detalles) == 0 {
 				continue
@@ -447,11 +447,11 @@ func (H *Handler) GetUserData(c echo.Context) error {
 					Duration += detalle.FechaFin.Sub(detalle.FechaInicio)
 				}
 			}
-			file.SetCellValue(sheetName, "H"+strconv.Itoa(ActualRow), StartDate)
+			file.SetCellValue(sheetName, "h"+strconv.Itoa(ActualRow), StartDate)
 			file.SetCellValue(sheetName, "I"+strconv.Itoa(ActualRow), EndDate)
 			file.SetCellValue(sheetName, "J"+strconv.Itoa(ActualRow), Duration)
 			file.SetCellValue(sheetName, "K"+strconv.Itoa(ActualRow), len(ticket.Detalles))
-			file.SetCellValue(sheetName, "L"+strconv.Itoa(ActualRow), ticket.GetTipo(H.DB))
+			file.SetCellValue(sheetName, "L"+strconv.Itoa(ActualRow), ticket.GetTipo(h.DB))
 			ActualRow++
 		}
 
@@ -479,7 +479,7 @@ func (H *Handler) GetUserData(c echo.Context) error {
 		file.SetCellValue(sheetName, "H2", "Duration")
 		ActualRow = 3
 		var detalles []*ORM.TicketsDetalle
-		H.DB.Where("usuario_id = ?", UserData.ID).Find(&detalles)
+		h.DB.Where("usuario_id = ?", UserData.ID).Find(&detalles)
 		for _, detalle := range detalles {
 			file.SetCellValue(sheetName, "A"+strconv.Itoa(ActualRow), detalle.ID)
 			file.SetCellValue(sheetName, "B"+strconv.Itoa(ActualRow), detalle.TicketID)
@@ -488,7 +488,7 @@ func (H *Handler) GetUserData(c echo.Context) error {
 			file.SetCellValue(sheetName, "E"+strconv.Itoa(ActualRow), detalle.FechaFin)
 			file.SetCellValue(sheetName, "F"+strconv.Itoa(ActualRow), detalle.UsuarioID)
 			file.SetCellValue(sheetName, "G"+strconv.Itoa(ActualRow), detalle.Diagnostico)
-			file.SetCellValue(sheetName, "H"+strconv.Itoa(ActualRow), detalle.FechaFin.Sub(detalle.FechaInicio))
+			file.SetCellValue(sheetName, "h"+strconv.Itoa(ActualRow), detalle.FechaFin.Sub(detalle.FechaInicio))
 			ActualRow++
 		}
 		// Write Excel file to memory buffer
@@ -525,7 +525,7 @@ func (H *Handler) GetUserData(c echo.Context) error {
 	}
 }
 
-func (H *Handler) GetProcessData(c echo.Context) error {
+func (h *Handler) GetProcessData(c echo.Context) error {
 	// Get the processes to retrieve from query params
 	ProcessIDStr := c.QueryParam("id") // comma separated list of processes id, like: 1,2,3,4
 	filesMap := make(map[string]*bytes.Buffer)
@@ -535,7 +535,7 @@ func (H *Handler) GetProcessData(c echo.Context) error {
 			return c.JSON(400, "Invalid process ID:"+ID)
 		}
 		ProcessData := new(ORM.Proceso)
-		ProcessData.Get(H.DB, uint(ProcessIDInt))
+		ProcessData.Get(h.DB, uint(ProcessIDInt))
 		if ProcessData.ID == 0 {
 			// Process not found, continue with the next one
 			continue
@@ -589,14 +589,14 @@ func (H *Handler) GetProcessData(c echo.Context) error {
 		file.SetCellValue(sheetName, "B15", ProcessData.Organizacion.Nombre)
 		// Add Sheets Tickets and Tickets Details
 		// Add Tickets Sheet to Excel file
-		H.sheetTickets(file, ProcessData.TicketsProcesos)
+		h.sheetTickets(file, ProcessData.TicketsProcesos)
 		TicketsDetalles := make([]*ORM.TicketsDetalle, 0)
 		TicketsID := make([]uint, 0)
 		for _, ticket := range ProcessData.TicketsProcesos {
 			TicketsID = append(TicketsID, ticket.ID)
 		}
-		H.DB.Where("ticket_id IN ?", TicketsID).Find(&TicketsDetalles)
-		sheetTicketsDetails(H, file, TicketsDetalles)
+		h.DB.Where("ticket_id IN ?", TicketsID).Find(&TicketsDetalles)
+		sheetTicketsDetails(h, file, TicketsDetalles)
 		// Add Sheet Jobs History
 		sheetJobsHistory(file, ProcessData.JobsHistory)
 		// Sheet Logs
@@ -605,7 +605,7 @@ func (H *Handler) GetProcessData(c echo.Context) error {
 		for _, job := range ProcessData.JobsHistory {
 			JobsID = append(JobsID, job.ID)
 		}
-		H.DB.Where("job_id IN ?", JobsID).Find(&Logs)
+		h.DB.Where("job_id IN ?", JobsID).Find(&Logs)
 		sheetJobsLogs(file, Logs)
 		// Add sheets Usuarios, Clientes
 		sheetUsersGeneric(file, ProcessData.Usuarios)
@@ -621,7 +621,7 @@ func (H *Handler) GetProcessData(c echo.Context) error {
 		file.SetCellValue(sheetName, "E2", "Organization Name")
 		ActualRow := 3
 		for _, cliente := range ProcessData.Clientes {
-			cliente.Get(H.DB, cliente.ID) // obtener toda la data del cliente
+			cliente.Get(h.DB, cliente.ID) // obtener toda la data del cliente
 			file.SetCellValue(sheetName, "A"+strconv.Itoa(ActualRow), cliente.Nombre)
 			file.SetCellValue(sheetName, "B"+strconv.Itoa(ActualRow), cliente.Apellido)
 			file.SetCellValue(sheetName, "C"+strconv.Itoa(ActualRow), cliente.Email)

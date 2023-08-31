@@ -16,12 +16,12 @@ func (Rol) GetAll(db *gorm.DB) []*Rol {
 	return roles
 }
 
-func (this *Rol) Get(db *gorm.DB, id uint) {
-	db.Preload("Rutas").First(&this, id)
+func (r *Rol) Get(db *gorm.DB, id uint) {
+	db.Preload("Rutas").First(&r, id)
 }
 
-func (this *Rol) GetUsuarios(db *gorm.DB) {
-	err := db.Model(&this).Association("Usuarios").Find(&this.Usuarios)
+func (r *Rol) GetUsuarios(db *gorm.DB) {
+	err := db.Model(&r).Association("Usuarios").Find(&r.Usuarios)
 	if err != nil {
 		return
 	}
