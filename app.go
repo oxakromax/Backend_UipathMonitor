@@ -86,9 +86,16 @@ func main() {
 	if os.Getenv("PORT") != "" {
 		port = os.Getenv("PORT")
 	}
-	err = e.Start(":" + port)
-	if err != nil {
-		panic(err)
+	if SSlCert, SSlKey := os.Getenv("SSL_CERT"), os.Getenv("SSL_KEY"); SSlCert != "" && SSlKey != "" {
+		err = e.StartTLS(":"+port, SSlCert, SSlKey)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		err = e.Start(":" + port)
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -124,6 +131,7 @@ func routes(e *echo.Echo, H *Server.Handler) {
 	e.DELETE("/admin/organization", H.DeleteOrganization)
 	e.DELETE("/admin/organization/client", H.DeleteOrganizationClient)
 	e.DELETE("/admin/users", H.DeleteUser)
+	e.DELETE("/user/processes/:id/clients", H.DeleteClientsFromProcess)
 	e.GET("/admin/downloads/orgs", H.GetOrgData)
 	e.GET("/admin/downloads/processes", H.GetProcessData)
 	e.GET("/admin/downloads/users", H.GetUserData)
@@ -133,11 +141,10 @@ func routes(e *echo.Echo, H *Server.Handler) {
 	e.GET("/admin/users/roles", H.GetAllRoles)
 	e.GET("/client/tickets", H.GetClientTicket)
 	e.GET("/monitor/Orgs", H.GetOrgs)
-	e.GET("/monitor/:id/newIncident", H.NewIncident)
 	e.GET("/monitor/RefreshOrgs", H.UpdateUipathProcess)
 	e.GET("/pingAuth", H.PingAuth)
 	e.GET("/Time", H.GetTime)
-	e.GET("/user/incidents", H.GetUserIncidents)
+	e.GET("/user/incidents", H.GetUserTickets)
 	e.GET("/user/incidents/details", H.GetTicketSettings)
 	e.GET("/user/organizations", H.GetUserOrganizations)
 	e.GET("/user/processes", H.GetUserProcesses)
@@ -153,10 +160,10 @@ func routes(e *echo.Echo, H *Server.Handler) {
 	e.POST("/admin/users", H.CreateUser)
 	e.POST("/auth", H.Login)
 	e.POST("/forgot", H.ForgotPassword)
-	e.POST("/monitor/:id/newIncident", H.NewIncident)
+	e.POST("/monitor/:id/newIncident", H.NewTicket)
 	e.POST("/user/incidents/details", H.PostIncidentDetails)
 	e.POST("/user/processes/:id/clients", H.AddClientsToProcess)
-	e.POST("/user/processes/:id/newIncident", H.NewIncident)
+	e.POST("/user/processes/:id/newIncident", H.NewTicket)
 	e.POST("/user/processes/:id/users", H.AddUsersToProcess)
 	e.PUT("/admin/organization", H.UpdateOrganization)
 	e.PUT("/admin/organization/process", H.UpdateProcessAlias)

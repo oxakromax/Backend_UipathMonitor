@@ -46,6 +46,7 @@ func (h *Handler) GetClientTicket(c echo.Context) error {
 	returnProcess.Organizacion = nil
 	returnProcess.TicketsProcesos = nil
 	returnProcess.TicketsProcesos = append(returnProcess.TicketsProcesos, ticket)
+	returnProcess.JobsHistory = nil
 	for _, usuario := range returnProcess.Usuarios {
 		usuario.Password = ""
 	}

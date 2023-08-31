@@ -67,6 +67,8 @@ func (h *Handler) GetOrganizations(c echo.Context) error {
 		for _, usuario := range Organization.Usuarios {
 			usuario.Password = ""
 		}
+		Organization.AppSecret = ""
+		Organization.AppID = ""
 		return c.JSON(http.StatusOK, Organization)
 	}
 	// Obtener las organizaciones de la base de datos
@@ -78,6 +80,8 @@ func (h *Handler) GetOrganizations(c echo.Context) error {
 		for _, usuario := range org.Usuarios {
 			usuario.Password = ""
 		}
+		org.AppSecret = ""
+		org.AppID = ""
 	}
 	return c.JSON(http.StatusOK, AllOrgs)
 

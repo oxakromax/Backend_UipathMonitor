@@ -179,7 +179,7 @@ func (h *Handler) GetUserProcesses(c echo.Context) error {
 
 }
 
-func (h *Handler) GetUserIncidents(c echo.Context) error {
+func (h *Handler) GetUserTickets(c echo.Context) error {
 	// Obtener el ID del usuario del token JWT
 	User, err := h.GetUserJWT(c)
 	if err != nil {
@@ -387,8 +387,8 @@ func (h *Handler) PostIncidentDetails(c echo.Context) error {
 	return c.JSON(http.StatusOK, Incident)
 }
 
-// NewIncident
-func (h *Handler) NewIncident(c echo.Context) error {
+// NewTicket
+func (h *Handler) NewTicket(c echo.Context) error {
 	ProcessIDStr := c.Param("id")
 	ProcessID, err := strconv.Atoi(ProcessIDStr)
 	if err != nil {

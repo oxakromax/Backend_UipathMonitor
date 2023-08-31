@@ -44,7 +44,7 @@ func (h *Handler) RefreshDataBase(e *echo.Echo) {
 	for key, route := range echoRoutesMap {
 		if _, exists := dbRoutesMap[key]; !exists {
 			// Si la ruta no existe en la base de datos, agregarla
-			h.DB.Create(route)
+			h.DB.Create(&route)
 		}
 		// (No es necesario agregarlo a la lista, porque ya está en la base de datos o se ha creado)
 	}
