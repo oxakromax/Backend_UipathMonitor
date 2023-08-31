@@ -5,17 +5,17 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/oxakromax/Backend_UipathMonitor/ORM"
 )
 
 func (H *Handler) GetProcesses(c echo.Context) error {
-	UserID := uint(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
-	User := new(ORM.Usuario)
-	User.Get(H.Db, UserID)
+	User, err := H.GetUserJWT(c)
+	if err != nil {
+		return err
+	}
 	if User.HasRole("processes_administration") {
-		Process := new(ORM.Proceso).GetAll(H.Db)
+		Process := new(ORM.Proceso).GetAll(H.DB)
 		return c.JSON(200, Process)
 	}
 	return c.JSON(200, User.Procesos)
@@ -28,11 +28,12 @@ func (H *Handler) GetProcess(c echo.Context) error {
 		return c.JSON(400, "Invalid process ID")
 	}
 	Process := new(ORM.Proceso)
-	UserID := uint(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
-	User := new(ORM.Usuario)
-	User.Get(H.Db, UserID)
+	User, err := H.GetUserJWT(c)
+	if err != nil {
+		return err
+	}
 	if User.HasRole("processes_administration") || User.HasProcess(ProcessID) {
-		Process.Get(H.Db, uint(ProcessID))
+		Process.Get(H.DB, uint(ProcessID))
 		sort.Slice(Process.TicketsProcesos, func(i, j int) bool {
 			return Process.TicketsProcesos[i].ID > Process.TicketsProcesos[j].ID
 		})
@@ -51,13 +52,14 @@ func (H *Handler) GetPossibleUsers(c echo.Context) error {
 		return c.JSON(400, "Invalid process ID")
 	}
 	Process := new(ORM.Proceso)
-	UserID := uint(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
-	User := new(ORM.Usuario)
-	User.Get(H.Db, UserID)
+	User, err := H.GetUserJWT(c)
+	if err != nil {
+		return err
+	}
 	if User.HasRole("processes_administration") || User.HasProcess(ProcessID) {
-		Process.Get(H.Db, uint(ProcessID))
+		Process.Get(H.DB, uint(ProcessID))
 		Org := new(ORM.Organizacion)
-		Org.Get(H.Db, Process.OrganizacionID)
+		Org.Get(H.DB, Process.OrganizacionID)
 		UsersReturn := []*ORM.Usuario{}
 		for _, OrgUser := range Org.Usuarios {
 			// check if the user is already in the process
@@ -84,13 +86,14 @@ func (H *Handler) GetPossibleClients(c echo.Context) error {
 		return c.JSON(400, "Invalid process ID")
 	}
 	Process := new(ORM.Proceso)
-	UserID := uint(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
-	User := new(ORM.Usuario)
-	User.Get(H.Db, UserID)
+	User, err := H.GetUserJWT(c)
+	if err != nil {
+		return err
+	}
 	if User.HasRole("processes_administration") || User.HasProcess(ProcessID) {
-		Process.Get(H.Db, uint(ProcessID))
+		Process.Get(H.DB, uint(ProcessID))
 		Org := new(ORM.Organizacion)
-		Org.Get(H.Db, Process.OrganizacionID)
+		Org.Get(H.DB, Process.OrganizacionID)
 		ClientsReturn := []*ORM.Cliente{}
 		for _, OrgClient := range Org.Clientes {
 			// check if the client is already in the process
@@ -117,18 +120,19 @@ func (H *Handler) UpdateProcess(c echo.Context) error {
 		return c.JSON(400, "Invalid process ID")
 	}
 	Process := new(ORM.Proceso)
-	UserID := uint(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
-	User := new(ORM.Usuario)
-	User.Get(H.Db, UserID)
+	User, err := H.GetUserJWT(c)
+	if err != nil {
+		return err
+	}
 	if User.HasRole("processes_administration") || User.HasProcess(ProcessID) {
-		Process.Get(H.Db, uint(ProcessID))
+		Process.Get(H.DB, uint(ProcessID))
 		if Process.ID == 0 {
 			return c.JSON(404, "Process not found")
 		}
 		if err := c.Bind(Process); err != nil {
 			return c.JSON(400, "Invalid JSON")
 		}
-		H.Db.Save(Process)
+		H.DB.Save(Process)
 		return c.JSON(200, Process)
 	}
 	return c.JSON(403, "Forbidden")
@@ -142,9 +146,10 @@ func (H *Handler) DeleteClientsFromProcess(c echo.Context) error {
 		return c.JSON(400, "Invalid process ID")
 	}
 	// check if the user had "processes_administration" role Or if the user is the owner of the process
-	UserID := uint(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
-	User := new(ORM.Usuario)
-	User.Get(H.Db, UserID)
+	User, err := H.GetUserJWT(c)
+	if err != nil {
+		return err
+	}
 	HasProcess := User.HasProcess(ProcessID)
 	HasRole := User.HasRole("processes_administration")
 	if !HasProcess && !HasRole {
@@ -152,7 +157,7 @@ func (H *Handler) DeleteClientsFromProcess(c echo.Context) error {
 	}
 	var Process ORM.Proceso
 
-	Process.Get(H.Db, uint(ProcessID))
+	Process.Get(H.DB, uint(ProcessID))
 	if Process.ID == 0 {
 		return c.JSON(404, "Process not found")
 	}
@@ -167,7 +172,7 @@ func (H *Handler) DeleteClientsFromProcess(c echo.Context) error {
 		ClientList = append(ClientList, ClientIDInt)
 	}
 	// Remove the clients from the process
-	err = Process.RemoveClients(H.Db, ClientList)
+	err = Process.RemoveClients(H.DB, ClientList)
 	if err != nil {
 		return c.JSON(500, "Error removing clients from process, error:"+err.Error())
 	}
@@ -182,9 +187,10 @@ func (H *Handler) AddClientsToProcess(c echo.Context) error {
 		return c.JSON(400, "Invalid process ID")
 	}
 	// check if the user had "processes_administration" role Or if the user is the owner of the process
-	UserID := uint(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
-	User := new(ORM.Usuario)
-	User.Get(H.Db, UserID)
+	User, err := H.GetUserJWT(c)
+	if err != nil {
+		return err
+	}
 	HasProcess := User.HasProcess(ProcessID)
 	HasRole := User.HasRole("processes_administration")
 	if !HasProcess && !HasRole {
@@ -192,7 +198,7 @@ func (H *Handler) AddClientsToProcess(c echo.Context) error {
 	}
 	var Process ORM.Proceso
 
-	Process.Get(H.Db, uint(ProcessID))
+	Process.Get(H.DB, uint(ProcessID))
 	if Process.ID == 0 {
 		return c.JSON(404, "Process not found")
 	}
@@ -207,7 +213,7 @@ func (H *Handler) AddClientsToProcess(c echo.Context) error {
 		ClientList = append(ClientList, ClientIDInt)
 	}
 	// Add the clients to the process
-	err = Process.AddClients(H.Db, ClientList)
+	err = Process.AddClients(H.DB, ClientList)
 	if err != nil {
 		return c.JSON(500, "Error adding clients to process, error:"+err.Error())
 	}
@@ -222,9 +228,10 @@ func (H *Handler) DeleteUsersFromProcess(c echo.Context) error {
 		return c.JSON(400, "Invalid process ID")
 	}
 	// check if the user had "processes_administration" role Or if the user is the owner of the process
-	UserID := uint(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
-	User := new(ORM.Usuario)
-	User.Get(H.Db, UserID)
+	User, err := H.GetUserJWT(c)
+	if err != nil {
+		return err
+	}
 	HasProcess := User.HasProcess(ProcessID)
 	HasRole := User.HasRole("processes_administration")
 	if !HasProcess && !HasRole {
@@ -232,7 +239,7 @@ func (H *Handler) DeleteUsersFromProcess(c echo.Context) error {
 	}
 	var Process ORM.Proceso
 
-	Process.Get(H.Db, uint(ProcessID))
+	Process.Get(H.DB, uint(ProcessID))
 	if Process.ID == 0 {
 		return c.JSON(404, "Process not found")
 	}
@@ -247,7 +254,7 @@ func (H *Handler) DeleteUsersFromProcess(c echo.Context) error {
 		UserList = append(UserList, UserIDInt)
 	}
 	// Remove the users from the process
-	err = Process.RemoveUsers(H.Db, UserList)
+	err = Process.RemoveUsers(H.DB, UserList)
 	if err != nil {
 		return c.JSON(500, "Error removing users from process, error:"+err.Error())
 	}
@@ -262,9 +269,10 @@ func (H *Handler) AddUsersToProcess(c echo.Context) error {
 		return c.JSON(400, "Invalid process ID")
 	}
 	// check if the user had "processes_administration" role Or if the user is the owner of the process
-	UserID := uint(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
-	User := new(ORM.Usuario)
-	User.Get(H.Db, UserID)
+	User, err := H.GetUserJWT(c)
+	if err != nil {
+		return err
+	}
 	HasProcess := User.HasProcess(ProcessID)
 	HasRole := User.HasRole("processes_administration")
 	if !HasProcess && !HasRole {
@@ -272,7 +280,7 @@ func (H *Handler) AddUsersToProcess(c echo.Context) error {
 	}
 	var Process ORM.Proceso
 
-	Process.Get(H.Db, uint(ProcessID))
+	Process.Get(H.DB, uint(ProcessID))
 	if Process.ID == 0 {
 		return c.JSON(404, "Process not found")
 	}
@@ -287,7 +295,7 @@ func (H *Handler) AddUsersToProcess(c echo.Context) error {
 		UserList = append(UserList, UserIDInt)
 	}
 	// Add the users to the process
-	err = Process.AddUsers(H.Db, UserList)
+	err = Process.AddUsers(H.DB, UserList)
 	if err != nil {
 		return c.JSON(500, "Error adding users to process, error:"+err.Error())
 	}

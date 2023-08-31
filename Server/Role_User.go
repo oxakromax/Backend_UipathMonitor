@@ -22,7 +22,7 @@ func (H *Handler) Login(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, "Invalid email or password") // Devolver un error 400 de solicitud incorrecta con un mensaje de error
 	}
 	var user ORM.Usuario
-	user.GetByEmail(H.Db, email) // Buscar al usuario por su correo electrónico en la base de datos
+	user.GetByEmail(H.DB, email) // Buscar al usuario por su correo electrónico en la base de datos
 	if user.ID == 0 {            // Validar si el usuario no existe
 		return c.JSON(http.StatusNotFound, "User not found") // Devolver un error 404 de no encontrado con un mensaje de error
 	}
@@ -33,7 +33,8 @@ func (H *Handler) Login(c echo.Context) error {
 	token := jwt.New(jwt.SigningMethodHS512)
 	// Establecer los datos del token
 	claims := token.Claims.(jwt.MapClaims)
-	claims["id"] = user.ID                                // Establecer el ID del usuario como un campo en los datos del token
+	claims["id"] = user.ID // Establecer el ID del usuario como un campo en los datos del token
+	claims["user"] = user
 	claims["exp"] = time.Now().Add(time.Hour * 72).Unix() // Establecer la fecha de vencimiento del token en 72 horas a partir de la hora actual
 	// Generar el token codificado y enviarlo como respuesta
 	t, err := token.SignedString([]byte(H.TokenKey))
@@ -50,7 +51,7 @@ func (H *Handler) ForgotPassword(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, "Invalid email") // Devolver un error 400 de solicitud incorrecta con un mensaje de error
 	}
 	var user ORM.Usuario
-	H.Db.Where("email = ?", email).First(&user) // Buscar al usuario por su correo electrónico en la base de datos
+	H.DB.Where("email = ?", email).First(&user) // Buscar al usuario por su correo electrónico en la base de datos
 	if user.ID == 0 {                           // Validar si el usuario no existe
 		return c.JSON(http.StatusNotFound, "User not found") // Devolver un error 404 de no encontrado con un mensaje de error
 	}
@@ -65,20 +66,20 @@ func (H *Handler) ForgotPassword(c echo.Context) error {
 	}
 	// Actualizar la contraseña del usuario en la base de datos
 	user.SetPassword(newPassword)
-	H.Db.Save(&user)
+	H.DB.Save(&user)
 	return c.JSON(http.StatusOK, "Password reset successfully")
 }
 func (H *Handler) GetProfile(c echo.Context) error {
 	// Obtener el ID del usuario del token JWT
-	id := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
-	// Obtener el usuario de la base de datos
-	User := new(ORM.Usuario)
-	User.Get(H.Db, uint(id))
+	User, err := H.GetUserJWT(c)
+	if err != nil {
+		return err
+	}
 	if User.ID == 0 {
 		return c.JSON(http.StatusNotFound, "User not found")
 	}
 	// Ocultar la contraseña del usuario
-	User.GetComplete(H.Db)
+	User.GetComplete(H.DB)
 	User.Password = ""
 	for _, organization := range User.Organizaciones {
 		organization.AppID = ""
@@ -90,13 +91,11 @@ func (H *Handler) GetProfile(c echo.Context) error {
 }
 func (H *Handler) UpdateProfile(c echo.Context) error {
 	// Obtener el ID del usuario del token JWT
-	id := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
-	// Obtener el usuario de la base de datos
-	User := new(ORM.Usuario)
-	H.Db.First(&User, id)
-	if User.ID == 0 {
-		return c.JSON(http.StatusNotFound, "User not found")
+	User, err := H.GetUserJWT(c)
+	if err != nil {
+		return err
 	}
+	User.GetComplete(H.DB) // Recargar el usuario desde la base de datos para obtener los ultimos cambios
 	oldmail := User.Email
 	newMail := c.FormValue("email")
 	if newMail != "" {
@@ -117,29 +116,26 @@ func (H *Handler) UpdateProfile(c echo.Context) error {
 	if oldmail != User.Email {
 		// Verificar si el email ya existe en la base de datos
 		checkUser := new(ORM.Usuario)
-		H.Db.Where("email = ?", User.Email).First(&checkUser)
+		H.DB.Where("email = ?", User.Email).First(&checkUser)
 		if checkUser.ID != 0 {
 			return c.JSON(http.StatusConflict, "Email already exists")
 		}
 	}
 	// Guardar los datos actualizados del usuario en la base de datos
-	H.Db.Updates(&User)
+	H.DB.Updates(&User)
 	// Ocultar la contraseña del usuario
 	User.Password = ""
 	return c.JSON(http.StatusOK, User)
 }
 func (H *Handler) GetUserOrganizations(c echo.Context) error {
 	// Obtener el ID del usuario del token JWT
-	id := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
-	// Obtener el usuario de la base de datos
-	User := new(ORM.Usuario)
-	User.Get(H.Db, uint(id))
-	if User.ID == 0 {
-		return c.JSON(http.StatusNotFound, "User not found")
+	User, err := H.GetUserJWT(c)
+	if err != nil {
+		return err
 	}
-	// Obtener las organizaciones del usuario
+	User.GetComplete(H.DB) // Recargar el usuario desde la base de datos
 	var Organizations []*ORM.Organizacion
-	_ = H.Db.Model(&User).Association("Organizaciones").Find(&Organizations)
+	_ = H.DB.Model(&User).Association("Organizaciones").Find(&Organizations)
 	for _, organization := range Organizations {
 		organization.AppID = ""
 		organization.AppSecret = ""
@@ -150,42 +146,51 @@ func (H *Handler) GetUserOrganizations(c echo.Context) error {
 }
 
 func (H *Handler) GetUserProcesses(c echo.Context) error {
-	// Obtener el ID del usuario del token JWT
-	id := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
-	// Obtener el usuario de la base de datos
-	User := new(ORM.Usuario)
-	User.Get(H.Db, uint(id))
-	if User.ID == 0 {
-		return c.JSON(http.StatusNotFound, "User not found")
+	// Si el usuario posee el rol de administrador de procesos, devolver todos los procesos
+	User, err := H.GetUserJWT(c)
+	if err != nil {
+		return err
 	}
-	// Obtener las organizaciones del usuario
-	var Organizations []*ORM.Organizacion
-	_ = H.Db.Model(&User).Association("Organizaciones").Find(&Organizations)
-	if len(Organizations) == 0 {
-		return c.JSON(http.StatusNotFound, "Organizations not found")
+	User.GetComplete(H.DB) // Recargar el usuario desde la base de datos
+	if User.HasRole("processes_administration") {
+		Processes := new(ORM.Proceso).GetAll(H.DB)
+		for _, process := range Processes {
+			for _, user := range process.Usuarios {
+				user.Password = ""
+			}
+			process.Organizacion.AppSecret = ""
+			process.Organizacion.AppID = ""
+			process.Organizacion.AppScope = ""
+		}
+		return c.JSON(http.StatusOK, Processes)
 	}
-	// Obtener los procesos de cada organización
+	// Si el usuario no posee el rol de administrador de procesos, devolver los procesos a los que tiene acceso (precargando las organizaciones de los procesos)
 	var Processes []*ORM.Proceso
-	for _, organization := range Organizations {
-		_ = H.Db.Model(&organization).Association("Procesos").Find(&Processes)
-	}
-	if len(Processes) == 0 {
-		return c.JSON(http.StatusNotFound, "Processes not found")
+	_ = H.DB.Model(&User).Preload("Organizacion").Preload("TicketsProcesos").Preload("Clientes").Preload("Usuarios").Preload("TicketsProcesos.Detalles").Preload("JobsHistory").Association("Procesos").Find(&Processes)
+	for _, process := range Processes {
+		for _, user := range process.Usuarios {
+			user.Password = ""
+		}
+		process.Organizacion.AppSecret = ""
+		process.Organizacion.AppID = ""
+		process.Organizacion.AppScope = ""
 	}
 	return c.JSON(http.StatusOK, Processes)
+
 }
 
 func (H *Handler) GetUserIncidents(c echo.Context) error {
 	// Obtener el ID del usuario del token JWT
-	id := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
-	// Obtener el usuario de la base de datos
-	User := new(ORM.Usuario)
-	User.Get(H.Db, uint(id))
+	User, err := H.GetUserJWT(c)
+	if err != nil {
+		return err
+	}
+	User.GetComplete(H.DB) // Recargar el usuario desde la base de datos
 	if User.ID == 0 {
 		return c.JSON(http.StatusNotFound, "User not found")
 	}
 	var procesosWithIncidents []*ORM.Proceso
-	User.Procesos = ORM.GetListByUser(H.Db, User.ID)
+	User.Procesos = ORM.GetListByUser(H.DB, User.ID)
 	for _, proceso := range User.Procesos {
 		for _, usuario := range proceso.Usuarios {
 			usuario.Password = ""
@@ -270,7 +275,7 @@ func (H *Handler) GetTicketSettings(c echo.Context) error {
 		return c.JSON(400, "Invalid ticket ID")
 	}
 	ticket := new(ORM.TicketsProceso)
-	ticket.Get(H.Db, uint(ticketidInt))
+	ticket.Get(H.DB, uint(ticketidInt))
 	if ticket.ID == 0 {
 		return c.JSON(404, "ticket not found")
 	}
@@ -296,17 +301,17 @@ func (H *Handler) PostIncidentDetails(c echo.Context) error {
 	// - estado: Nuevo estado del incidente
 	// - IsDiagnostic: Indica si el detalle es un diagnostico
 	// Obtener el ID del usuario del token JWT
-	id := int(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
-	// Obtener el usuario de la base de datos
-	User := new(ORM.Usuario)
-	User.Get(H.Db, uint(id))
+	User, err := H.GetUserJWT(c)
+	if err != nil {
+		return err
+	}
 	if User.ID == 0 {
 		return c.JSON(http.StatusNotFound, "User not found")
 	}
 	// Obtener el incidente de la base de datos
 	Incident := new(ORM.TicketsProceso)
 	IncidentID, _ := strconv.Atoi(c.FormValue("incidentID"))
-	Incident.Get(H.Db, uint(IncidentID))
+	Incident.Get(H.DB, uint(IncidentID))
 	OldState := Incident.Estado
 	if Incident.ID == 0 {
 		return c.JSON(http.StatusNotFound, "Incident not found")
@@ -317,7 +322,7 @@ func (H *Handler) PostIncidentDetails(c echo.Context) error {
 	}
 	// Obtener el proceso del incidente
 	Process := new(ORM.Proceso)
-	Process.Get(H.Db, Incident.ProcesoID)
+	Process.Get(H.DB, Incident.ProcesoID)
 	if Process.ID == 0 {
 		return c.JSON(http.StatusNotFound, "Process not found")
 	}
@@ -365,7 +370,7 @@ func (H *Handler) PostIncidentDetails(c echo.Context) error {
 	}
 	Incident.Estado = IncidentState
 	Incident.Detalles = append(Incident.Detalles, IncidentDetail)
-	H.Db.Save(Incident)
+	H.DB.Save(Incident)
 	if Incident.Estado != OldState {
 		// Enviar notificación a los usuarios del proceso
 		go func() {
@@ -390,9 +395,10 @@ func (H *Handler) NewIncident(c echo.Context) error {
 		return c.JSON(400, "Invalid process ID")
 	}
 	// check if the user had "processes_administration" role Or if the user is the owner of the process
-	UserID := uint(c.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["id"].(float64))
-	User := new(ORM.Usuario)
-	User.Get(H.Db, UserID)
+	User, err := H.GetUserJWT(c)
+	if err != nil {
+		return err
+	}
 	HasProcess := User.HasProcess(ProcessID)
 	HasRole := User.HasRole("processes_administration")
 	if !HasProcess && !HasRole && !User.HasRole("monitor") {
@@ -400,7 +406,7 @@ func (H *Handler) NewIncident(c echo.Context) error {
 	}
 	var Process ORM.Proceso
 
-	Process.Get(H.Db, uint(ProcessID))
+	Process.Get(H.DB, uint(ProcessID))
 	if Process.ID == 0 {
 		return c.JSON(404, "Process not found")
 	}
@@ -433,11 +439,11 @@ func (H *Handler) NewIncident(c echo.Context) error {
 	}
 
 	// Create the incident to retrieve the ID
-	H.Db.Create(Incident)
+	H.DB.Create(Incident)
 
 	if Incident.TipoID == 1 {
 		Process.ActiveMonitoring = false
-		H.Db.Save(&Process)
+		H.DB.Save(&Process)
 	}
 	// Check if there's a Detail in the incident
 	if len(Incident.Detalles) == 0 {
@@ -447,7 +453,7 @@ func (H *Handler) NewIncident(c echo.Context) error {
 		DefaultDetail.Detalle = "Evento creado por el usuario " + User.Nombre + " " + User.Apellido
 		DefaultDetail.TicketID = int(Incident.ID)
 		DefaultDetail.UsuarioID = int(User.ID)
-		H.Db.Create(DefaultDetail)
+		H.DB.Create(DefaultDetail)
 	}
 
 	// Send the notification to the users
@@ -456,7 +462,7 @@ func (H *Handler) NewIncident(c echo.Context) error {
 	body := Mail.GetBodyNewTicket(Mail.NewIncident{
 		ID:            int(Incident.ID),
 		NombreProceso: Process.Nombre,
-		Tipo:          Incident.GetTipo(H.Db),
+		Tipo:          Incident.GetTipo(H.DB),
 		Descripcion:   Incident.Descripcion,
 	})
 	subject := "Nuevo Ticket en el proceso " + Process.Nombre

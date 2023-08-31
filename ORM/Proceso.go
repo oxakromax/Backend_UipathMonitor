@@ -73,7 +73,7 @@ func (Proceso) TableName() string {
 
 func (Proceso) GetAll(db *gorm.DB) []*Proceso {
 	var procesos []*Proceso
-	db.Preload("Organizacion").Preload("Organizacion.Clientes").Preload("Organizacion.Usuarios").Preload("TicketsProcesos").Preload("Clientes").Preload("Usuarios").Preload("TicketsProcesos.Detalles").Find(&procesos)
+	db.Preload("Organizacion").Preload("Organizacion.Clientes").Preload("Organizacion.Usuarios").Preload("TicketsProcesos").Preload("Clientes").Preload("Usuarios").Preload("TicketsProcesos.Detalles").Preload("JobsHistory").Find(&procesos)
 	return procesos
 }
 

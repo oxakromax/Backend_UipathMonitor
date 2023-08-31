@@ -64,12 +64,11 @@ func main() {
 	e := echo.New()
 	H := &Server.Handler{
 		TokenKey:            os.Getenv("TOKEN_KEY"),
-		UniversalRoutes:     []string{"/auth", "/forgot", "/client/tickets"},
+		UniversalRoutes:     []string{"/auth", "/forgot", "/client/tickets", "/Time"},
 		UserUniversalRoutes: []string{"/user/profile", "/pingAuth"},
-		DbKey:               os.Getenv("DB_KEY"),
-		DbState:             false,
+		DBKey:               os.Getenv("DB_KEY"),
 	}
-	if H.DbKey == "" {
+	if H.DBKey == "" {
 		fmt.Println("DB_KEY environment variable not set")
 		NewKey, _ := functions.GenerateAESKey()
 		fmt.Println("Generated key: " + NewKey)
@@ -80,9 +79,8 @@ func main() {
 
 	go func() {
 		// Fl0 needs to open the port in less than 60 seconds, so we do it in a goroutine
-		H.Db = OpenDB()
+		H.DB = OpenDB()
 		H.RefreshDataBase(e)
-		H.DbState = true
 	}()
 	port := "8080"
 	if os.Getenv("PORT") != "" {
@@ -166,4 +164,5 @@ func routes(e *echo.Echo, H *Server.Handler) {
 	e.PUT("/admin/users", H.UpdateUser)
 	e.PUT("/monitor/UpdateExceptionJob", H.UpdateExceptionJob)
 	e.PUT("/user/processes/:id", H.UpdateProcess)
+	e.PUT("/user/profile", H.UpdateProfile)
 }

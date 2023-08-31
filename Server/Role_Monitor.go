@@ -11,14 +11,14 @@ import (
 // GetOrgs
 func (H *Handler) GetOrgs(c echo.Context) error {
 	var organizaciones []*ORM.Organizacion
-	H.Db.Preload("Procesos").Preload("Clientes").Preload("Usuarios").Preload("Procesos.TicketsProcesos").Find(&organizaciones)
+	H.DB.Preload("Procesos").Preload("Clientes").Preload("Usuarios").Preload("Procesos.TicketsProcesos").Find(&organizaciones)
 	return c.JSON(200, organizaciones)
 }
 
 // PatchJobHistory
 func (H *Handler) PatchJobHistory(c echo.Context) error {
 	var wg sync.WaitGroup
-	orgs := new(ORM.Organizacion).GetAll(H.Db)
+	orgs := new(ORM.Organizacion).GetAll(H.DB)
 
 	for _, org := range orgs {
 		FoldersAndProcesses := groupProcessesByFolderID(org.Procesos)
@@ -58,7 +58,7 @@ func (H *Handler) getExistingJobs(response *UipathAPI.JobsResponse) map[int]*ORM
 		JobIds = append(JobIds, value.ID)
 	}
 	var existingJobs []*ORM.JobHistory
-	H.Db.Where("job_id IN ?", JobIds).Find(&existingJobs)
+	H.DB.Where("job_id IN ?", JobIds).Find(&existingJobs)
 
 	jobMap := make(map[int]*ORM.JobHistory)
 	for _, job := range existingJobs {
@@ -100,9 +100,9 @@ func (H *Handler) updateOrCreateJobs(existingJobs map[int]*ORM.JobHistory, respo
 
 			if existingJob, found := existingJobs[value.ID]; found {
 				if existingJob.State != jobEntry.State {
-					H.Db.Model(existingJob).Updates(jobEntry)
+					H.DB.Model(existingJob).Updates(jobEntry)
 					existingJob.MonitorException = false
-					H.Db.Save(existingJob)
+					H.DB.Save(existingJob)
 				}
 			} else {
 				newJobs = append(newJobs, jobEntry)
@@ -111,7 +111,7 @@ func (H *Handler) updateOrCreateJobs(existingJobs map[int]*ORM.JobHistory, respo
 	}
 
 	if len(newJobs) > 0 {
-		H.Db.Create(&newJobs)
+		H.DB.Create(&newJobs)
 	}
 }
 
@@ -120,7 +120,7 @@ func (H *Handler) createLogs(response *UipathAPI.LogResponse) {
 
 	// Pre-fetch jobs to reduce DB lookups
 	var allJobs []ORM.JobHistory
-	H.Db.Find(&allJobs)
+	H.DB.Find(&allJobs)
 	jobKeyMap := make(map[string]*ORM.JobHistory)
 	for _, job := range allJobs {
 		jobKeyMap[job.JobKey] = &job
@@ -129,7 +129,7 @@ func (H *Handler) createLogs(response *UipathAPI.LogResponse) {
 	// Check logs without touching the DB
 	existingLogsMap := make(map[string]bool)
 	var existingLogs []ORM.LogJobHistory
-	H.Db.Find(&existingLogs, "job_key IN (?)", keysFromResponse(response))
+	H.DB.Find(&existingLogs, "job_key IN (?)", keysFromResponse(response))
 	for _, log := range existingLogs {
 		existingLogsMap[log.RawMessage] = true
 	}
@@ -160,7 +160,7 @@ func (H *Handler) createLogs(response *UipathAPI.LogResponse) {
 
 	// Bulk insert the new logs
 	if len(newLogs) > 0 {
-		H.Db.Create(&newLogs)
+		H.DB.Create(&newLogs)
 	}
 }
 
@@ -177,11 +177,11 @@ func (H *Handler) UpdateExceptionJob(c echo.Context) error {
 	// query JobKey
 	JobKey := c.QueryParam("JobKey")
 	Job := new(ORM.JobHistory)
-	H.Db.Where("job_key = ?", JobKey).First(&Job)
+	H.DB.Where("job_key = ?", JobKey).First(&Job)
 	if Job.ID == 0 {
 		return c.JSON(404, "Not Found")
 	}
 	Job.MonitorException = true
-	H.Db.Save(&Job)
+	H.DB.Save(&Job)
 	return c.JSON(200, "OK")
 }

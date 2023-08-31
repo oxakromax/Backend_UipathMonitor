@@ -1,6 +1,7 @@
 package Server
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -11,12 +12,12 @@ import (
 func (H *Handler) CheckDBState() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			// if H.DbState is True then the database is connected and let pass the request
+			// Check if the database is connected
 			// if not then send a 503 Service Unavailable
-			if H.DbState {
+			if H.DB.Error == nil {
 				return next(c)
 			}
-			return c.JSON(503, "Service Unavailable")
+			return echo.ErrServiceUnavailable
 		}
 	}
 }
@@ -30,29 +31,11 @@ func (H *Handler) CheckRoleMiddleware() echo.MiddlewareFunc {
 				}
 			}
 			// Verificar si el usuario está autenticado y tiene un rol permitido
-			userClaim, ok := c.Get("user").(*jwt.Token)
-			if !ok {
-				return echo.ErrUnauthorized
+			User, err := H.GetUserJWT(c)
+			if err != nil {
+				return err
 			}
-
-			claims, ok := userClaim.Claims.(jwt.MapClaims)
-			if !ok {
-				return echo.ErrUnauthorized
-			}
-
-			idFloat, ok := claims["id"].(float64)
-			if !ok {
-				return echo.ErrUnauthorized
-			}
-
-			id := uint(idFloat)
-			for _, route := range H.UserUniversalRoutes {
-				if strings.EqualFold(route, c.Path()) {
-					return next(c) // Permitir el acceso a la ruta
-				}
-			}
-			User := ORM.Usuario{}
-			User.Get(H.Db, id)                    // Obtener el usuario de la base de datos
+			// Ahora puedes usar la variable User directamente
 			for _, UserRole := range User.Roles { // Iterar sobre los roles del usuario
 				for _, route := range UserRole.Rutas {
 					if strings.EqualFold(route.Route, c.Path()) && strings.EqualFold(route.Method, c.Request().Method) {
@@ -63,4 +46,34 @@ func (H *Handler) CheckRoleMiddleware() echo.MiddlewareFunc {
 			return echo.ErrUnauthorized // Acceso denegado si el usuario no tiene el rol permitido
 		}
 	}
+}
+
+func (H *Handler) GetUserJWT(c echo.Context) (*ORM.Usuario, error) {
+	userClaim, ok := c.Get("user").(*jwt.Token)
+	if !ok {
+		return nil, echo.ErrUnauthorized
+	}
+
+	claims, ok := userClaim.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, echo.ErrUnauthorized
+	}
+
+	userMap, ok := claims["user"].(map[string]interface{})
+	if !ok {
+		return nil, echo.ErrUnauthorized
+	}
+
+	// Convertir el mapa a la estructura Usuario
+	userBytes, err := json.Marshal(userMap)
+	if err != nil {
+		return nil, echo.ErrInternalServerError
+	}
+
+	var User *ORM.Usuario
+	err = json.Unmarshal(userBytes, &User)
+	if err != nil {
+		return nil, echo.ErrInternalServerError
+	}
+	return User, nil
 }
