@@ -203,10 +203,12 @@ func (h *Handler) RefreshDataBase(e *echo.Echo) {
 		monitorUser.SetPassword(Password)
 		h.DB.Save(&monitorUser)
 	}
-	// "Incidente": 1,
-	// "Mejora": 2,
-	// "Mantenimiento": 3,
-	// "Otro": 4,
+	// Check if the tickets types exist (table isn't empty)
+	TicketsTypeBD := make([]*ORM.TicketsTipo, 0)
+	h.DB.Find(&TicketsTypeBD)
+	if len(TicketsTypeBD) > 0 {
+		return // If the table isn't empty, don't do anything
+	}
 	TicketsType := []string{"Incidente", "Mejora", "Mantenimiento", "Otro"}
 	for _, ticketType := range TicketsType {
 		ticket := new(ORM.TicketsTipo)

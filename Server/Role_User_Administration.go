@@ -303,7 +303,7 @@ func (h *Handler) CreateUser(c echo.Context) error {
 	h.DB.Where("nombre = ?", "user").First(&rol)
 	User.Roles = append(User.Roles, rol)
 	// Enviar la contraseña al correo del usuario
-	err = functions.SendMail([]string{User.Email}, "Bienvenido a Uipath Monitor", Mail.GetBodyNewUser(Mail.NewUser{Nombre: User.Nombre, Email: User.Email, Password: User.Password}))
+	err = functions.SendMail([]string{User.Email}, "Bienvenido al Monitor de procesos RPA", Mail.GetBodyNewUser(Mail.NewUser{Nombre: User.Nombre, Email: User.Email, Password: User.Password}))
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, "Error while sending email")
 	}

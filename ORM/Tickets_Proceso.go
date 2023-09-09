@@ -34,7 +34,7 @@ func (tp *TicketsProceso) GetTipo(db *gorm.DB) string {
 	// "Mantenimiento": 3,
 	// "Otro": 4,
 	if tp.Tipo == nil {
-		Tipo := &TicketsTipo{}
+		Tipo := new(TicketsTipo)
 		db.First(&Tipo, tp.TipoID)
 		tp.Tipo = Tipo
 	}

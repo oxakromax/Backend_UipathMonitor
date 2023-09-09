@@ -58,7 +58,7 @@ func (h *Handler) ForgotPassword(c echo.Context) error {
 	// Generar una nueva contraseña aleatoria
 	newPassword := functions.GeneratePassword(16)
 	// Enviar un correo electrónico al usuario con la nueva contraseña
-	Asunto := "Restablecimiento de contraseña ProcessMonitor"
+	Asunto := "Restablecimiento de contraseña Monitor de procesos RPA"
 	Cuerpo := Mail.GetBodyNewPassword(Mail.NewPassword{Nombre: user.Nombre + " " + user.Apellido, Password: newPassword})
 	err := functions.SendMail([]string{email}, Asunto, Cuerpo)
 	if err != nil {
@@ -176,7 +176,6 @@ func (h *Handler) GetUserProcesses(c echo.Context) error {
 		process.Organizacion.AppScope = ""
 	}
 	return c.JSON(http.StatusOK, Processes)
-
 }
 
 func (h *Handler) GetUserTickets(c echo.Context) error {
@@ -411,47 +410,47 @@ func (h *Handler) NewTicket(c echo.Context) error {
 		return c.JSON(404, "Process not found")
 	}
 	// Get the incident data from the request
-	Incident := new(ORM.TicketsProceso)
-	err = c.Bind(Incident)
+	Ticket := new(ORM.TicketsProceso)
+	err = c.Bind(Ticket)
 	if err != nil {
 		return c.JSON(400, "Invalid incident data")
 	}
 	// Check if the process has incidents of the same type ongoing (not Estado 3)
 	for _, incident := range Process.TicketsProcesos {
-		if incident.TipoID == Incident.TipoID && incident.Estado != "Finalizado" {
+		if incident.TipoID == Ticket.TipoID && incident.Estado != "Finalizado" {
 			return c.JSON(400, "Ya existe un incidente de este tipo en el proceso")
 		}
 	}
 
-	Incident.ProcesoID = Process.ID
-	Incident.Proceso = &Process
-	Incident.UsuarioCreadorID = int(User.ID)
-	if len(Incident.Detalles) != 0 {
-		for _, detail := range Incident.Detalles {
+	Ticket.ProcesoID = Process.ID
+	Ticket.Proceso = &Process
+	Ticket.UsuarioCreadorID = int(User.ID)
+	if len(Ticket.Detalles) != 0 {
+		for _, detail := range Ticket.Detalles {
 			detail.UsuarioID = int(User.ID)
 			detail.FechaInicio = time.Now().UTC()
 			detail.FechaFin = time.Now().UTC()
 		}
 	}
 
-	if Incident.Prioridad == 0 { // if the priority is not set, set it to the process priority
-		Incident.Prioridad = uint(Process.Priority)
+	if Ticket.Prioridad == 0 { // if the priority is not set, set it to the process priority
+		Ticket.Prioridad = uint(Process.Priority)
 	}
 
 	// Create the incident to retrieve the ID
-	h.DB.Create(Incident)
+	h.DB.Create(Ticket)
 
-	if Incident.TipoID == 1 {
+	if Ticket.TipoID == 1 {
 		Process.ActiveMonitoring = false
 		h.DB.Save(&Process)
 	}
 	// Check if there's a Detail in the incident
-	if len(Incident.Detalles) == 0 {
+	if len(Ticket.Detalles) == 0 {
 		DefaultDetail := new(ORM.TicketsDetalle)
 		DefaultDetail.FechaInicio = time.Now().UTC()
 		DefaultDetail.FechaFin = time.Now().UTC()
 		DefaultDetail.Detalle = "Evento creado por el usuario " + User.Nombre + " " + User.Apellido
-		DefaultDetail.TicketID = int(Incident.ID)
+		DefaultDetail.TicketID = int(Ticket.ID)
 		DefaultDetail.UsuarioID = int(User.ID)
 		h.DB.Create(DefaultDetail)
 	}
@@ -459,11 +458,11 @@ func (h *Handler) NewTicket(c echo.Context) error {
 	// Send the notification to the users
 	Emails := Process.GetEmails()
 	// Send the email to the users
-	body := Mail.GetBodyNewTicket(Mail.NewIncident{
-		ID:            int(Incident.ID),
+	body := Mail.GetBodyNewTicket(Mail.NewTicket{
+		ID:            int(Ticket.ID),
 		NombreProceso: Process.Nombre,
-		Tipo:          Incident.GetTipo(h.DB),
-		Descripcion:   Incident.Descripcion,
+		Tipo:          Ticket.GetTipo(h.DB),
+		Descripcion:   Ticket.Descripcion,
 	})
 	subject := "Nuevo Ticket en el proceso " + Process.Nombre
 	err = functions.SendMail(Emails, subject, body)
@@ -471,5 +470,5 @@ func (h *Handler) NewTicket(c echo.Context) error {
 		return c.JSON(500, "Error sending email")
 	}
 
-	return c.JSON(200, Incident)
+	return c.JSON(200, Ticket)
 }

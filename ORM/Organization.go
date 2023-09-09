@@ -192,12 +192,52 @@ func (o *Organizacion) GetFromApi(structType interface{}, folderid ...int) error
 }
 
 func (o *Organizacion) CheckAccessAPI() error {
-	err := o.RefreshUiPathToken()
-	if err != nil {
+	if err := o.RefreshUiPathToken(); err != nil {
 		return err
 	}
-	_, err = o.RequestAPI("GET", "Folders", nil)
-	return err
+
+	FoldersResponse := new(UipathAPI.FoldersResponse)
+	if err := o.GetFromApi(FoldersResponse); err != nil {
+		return errors.New("Error al obtener las carpetas de la organización, Falta permiso: OR.Folders")
+	}
+
+	if len(FoldersResponse.Value) == 0 {
+		return errors.New("no se encontraron carpetas en la organización")
+	}
+	FolderID := FoldersResponse.Value[0].ID
+
+	// Definir estructuras y errores asociados
+	checks := []struct {
+		data         interface{}
+		errorMessage string
+	}{
+		{new(UipathAPI.ReleasesResponse), "Error al obtener los procesos de la organización, Falta permiso: OR.Folders"},
+		{new(UipathAPI.JobsResponse), "Error al obtener los jobs de la organización, Falta permiso: OR.Jobs"},
+		{new(UipathAPI.LogResponse), "Error al obtener los logs de la organización, Falta permiso: OR.Monitoring"},
+		{new(UipathAPI.ProcessSchedulesResponse), "Error al obtener los schedules de la organización, Falta permiso: OR.Execution"},
+	}
+	errorsSlice := make([]error, len(checks))
+	wg := new(sync.WaitGroup)
+	for i, check := range checks {
+		go func(i int, check struct {
+			data         interface{}
+			errorMessage string
+		}) {
+			defer wg.Done()
+			err := o.GetFromApi(check.data, FolderID)
+			if err != nil {
+				errorsSlice[i] = errors.New(check.errorMessage)
+			}
+		}(i, check)
+		wg.Add(1)
+	}
+	wg.Wait()
+	for _, err := range errorsSlice {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (o *Organizacion) GetAll(db *gorm.DB) []*Organizacion {

@@ -1,13 +1,11 @@
 package Server
 
 import (
-	"net/http"
-	"strconv"
-	"time"
-
 	"github.com/labstack/echo/v4"
 	"github.com/oxakromax/Backend_UipathMonitor/ORM"
 	"github.com/oxakromax/Backend_UipathMonitor/functions"
+	"net/http"
+	"strconv"
 )
 
 func (h *Handler) CreateOrganization(c echo.Context) error {
@@ -46,8 +44,7 @@ func (h *Handler) CreateOrganization(c echo.Context) error {
 	_ = h.DB.Model(&Organization).Association("Usuarios").Append(User)
 	h.DB.Save(&Organization)
 	go func() {
-		time.Sleep(1 * time.Second)
-		_ = h.UpdateUipathProcess(c)
+		_ = h.UpdateUipathProcess(nil)
 	}() // Actualizar los procesos de la organización a través de la función UpdateUipathProcess
 	return c.JSON(http.StatusOK, Organization)
 }
