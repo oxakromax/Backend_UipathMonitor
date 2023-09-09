@@ -219,6 +219,7 @@ func (o *Organizacion) CheckAccessAPI() error {
 	errorsSlice := make([]error, len(checks))
 	wg := new(sync.WaitGroup)
 	for i, check := range checks {
+		wg.Add(1)
 		go func(i int, check struct {
 			data         interface{}
 			errorMessage string
@@ -229,7 +230,6 @@ func (o *Organizacion) CheckAccessAPI() error {
 				errorsSlice[i] = errors.New(check.errorMessage)
 			}
 		}(i, check)
-		wg.Add(1)
 	}
 	wg.Wait()
 	for _, err := range errorsSlice {
