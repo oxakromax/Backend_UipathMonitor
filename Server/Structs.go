@@ -63,7 +63,7 @@ func (h *Handler) RefreshDataBase(e *echo.Echo) {
 	// Crear o actualizar el rol de administrador con las rutas definidas en Echo
 	adminRole := ORM.Rol{
 		Nombre:      "admin",
-		Description: "El rol de administrador tiene acceso a todas las rutas del sistema. ",
+		Description: "El rol de administrador tiene acceso a todas las rutas del sistema, así como permisos universales por sobre los demás roles.",
 	}
 	checkAdminRole := new(ORM.Rol)
 	h.DB.Where("nombre = ?", "admin").First(&checkAdminRole)
@@ -119,7 +119,7 @@ func (h *Handler) RefreshDataBase(e *echo.Echo) {
 	roleDefinitions := []RoleDefinition{
 		{
 			Name:        "organization",
-			Description: "El rol de organización tiene acceso a modificar, crear, eliminar y ver las organizaciones del sistema.",
+			Description: "El rol de organización tiene acceso a modificar, crear, eliminar y ver las organizaciones del sistema en las cuales este sea incluido o sea propietario. Nota: Solo un administrador del sistema puede ver y gestionar todas las organizaciones sin ser parte de ellas.",
 		},
 		{
 			Name:        "user",
@@ -127,7 +127,7 @@ func (h *Handler) RefreshDataBase(e *echo.Echo) {
 		},
 		{
 			Name:        "user_administration",
-			Description: "El rol de administración de usuarios tiene acceso a modificar, crear, eliminar y ver los usuarios del sistema.",
+			Description: "El rol de administración de usuarios tiene acceso a modificar, crear, eliminar y ver los usuarios del sistema así como otorgar roles por debajo del rol de administrador.",
 		},
 		{
 			Name:        "processes_administration",

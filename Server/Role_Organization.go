@@ -68,19 +68,28 @@ func (h *Handler) GetOrganizations(c echo.Context) error {
 		Organization.AppID = ""
 		return c.JSON(http.StatusOK, Organization)
 	}
-	// Obtener las organizaciones de la base de datos
-	AllOrgs := Organization.GetAll(h.DB)
-	if len(AllOrgs) == 0 {
-		return c.JSON(http.StatusNotFound, "Organizations not found")
+	User, err := h.GetUserJWT(c)
+	if err != nil {
+		return err
 	}
-	for _, org := range AllOrgs {
-		for _, usuario := range org.Usuarios {
-			usuario.Password = ""
+	if User.HasRole("admin") {
+		// Obtener las organizaciones de la base de datos
+		AllOrgs := Organization.GetAll(h.DB)
+		if len(AllOrgs) == 0 {
+			return c.JSON(http.StatusNotFound, "Organizations not found")
 		}
-		org.AppSecret = ""
-		org.AppID = ""
+		for _, org := range AllOrgs {
+			for _, usuario := range org.Usuarios {
+				usuario.Password = ""
+			}
+			org.AppSecret = ""
+			org.AppID = ""
+		}
+		return c.JSON(http.StatusOK, AllOrgs)
 	}
-	return c.JSON(http.StatusOK, AllOrgs)
+	// Obtener las organizaciones del usuario de la base de datos
+	User.GetComplete(h.DB)
+	return c.JSON(http.StatusOK, User.Organizaciones)
 
 }
 func (h *Handler) UpdateOrganization(c echo.Context) error {
