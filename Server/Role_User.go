@@ -152,7 +152,7 @@ func (h *Handler) GetUserProcesses(c echo.Context) error {
 		return err
 	}
 	User.GetComplete(h.DB) // Recargar el usuario desde la base de datos
-	if User.HasRole("processes_administration") {
+	if User.HasRole("admin") {
 		Processes := new(ORM.Proceso).GetAll(h.DB)
 		for _, process := range Processes {
 			for _, user := range process.Usuarios {
@@ -164,6 +164,28 @@ func (h *Handler) GetUserProcesses(c echo.Context) error {
 		}
 		return c.JSON(http.StatusOK, Processes)
 	}
+	if User.HasRole("processes_administration") {
+		ProcessesID := make([]int, 0)
+		// Devuelve todos los procesos de las organizaciones del usuario
+		for _, organization := range User.Organizaciones {
+			organization.Get(h.DB, organization.ID)
+			for _, process := range organization.Procesos {
+				ProcessesID = append(ProcessesID, int(process.ID))
+			}
+		}
+		Processes := make([]*ORM.Proceso, 0)
+		h.DB.Preload("Organizacion").Preload("TicketsProcesos").Preload("Clientes").Preload("Usuarios").Preload("TicketsProcesos.Detalles").Preload("JobsHistory").Where("id IN (?)", ProcessesID).Find(&Processes)
+		for _, process := range Processes {
+			for _, user := range process.Usuarios {
+				user.Password = ""
+			}
+			process.Organizacion.AppSecret = ""
+			process.Organizacion.AppID = ""
+			process.Organizacion.AppScope = ""
+		}
+		return c.JSON(http.StatusOK, Processes)
+	}
+
 	// Si el usuario no posee el rol de administrador de procesos, devolver los procesos a los que tiene acceso (precargando las organizaciones de los procesos)
 	var Processes []*ORM.Proceso
 	_ = h.DB.Model(&User).Preload("Organizacion").Preload("TicketsProcesos").Preload("Clientes").Preload("Usuarios").Preload("TicketsProcesos.Detalles").Preload("JobsHistory").Association("Procesos").Find(&Processes)

@@ -60,7 +60,7 @@ func (h *Handler) GetPossibleUsers(c echo.Context) error {
 		Process.Get(h.DB, uint(ProcessID))
 		Org := new(ORM.Organizacion)
 		Org.Get(h.DB, Process.OrganizacionID)
-		UsersReturn := []*ORM.Usuario{}
+		UsersReturn := make([]*ORM.Usuario, 0)
 		for _, OrgUser := range Org.Usuarios {
 			// check if the user is already in the process
 			IsInProcess := false
@@ -163,7 +163,7 @@ func (h *Handler) DeleteClientsFromProcess(c echo.Context) error {
 	}
 	// Get the clients to remove from query params
 	ClientIDStr := c.QueryParam("clients_id") // comma separated list of clients id, like: 1,2,3,4
-	ClientList := []int{}
+	ClientList := make([]int, 0)
 	for _, ClientID := range strings.Split(ClientIDStr, ",") {
 		ClientIDInt, err := strconv.Atoi(ClientID)
 		if err != nil {
@@ -204,7 +204,7 @@ func (h *Handler) AddClientsToProcess(c echo.Context) error {
 	}
 	// Get the clients to add from query params
 	ClientIDStr := c.QueryParam("clients_id") // comma separated list of clients id, like: 1,2,3,4
-	ClientList := []int{}
+	ClientList := make([]int, 0)
 	for _, ClientID := range strings.Split(ClientIDStr, ",") {
 		ClientIDInt, err := strconv.Atoi(ClientID)
 		if err != nil {
@@ -245,7 +245,7 @@ func (h *Handler) DeleteUsersFromProcess(c echo.Context) error {
 	}
 	// Get the users to remove from query params
 	UserIDStr := c.QueryParam("users_id") // comma separated list of users id, like: 1,2,3,4
-	UserList := []int{}
+	UserList := make([]int, 0)
 	for _, UserID := range strings.Split(UserIDStr, ",") {
 		UserIDInt, err := strconv.Atoi(UserID)
 		if err != nil {
@@ -273,9 +273,8 @@ func (h *Handler) AddUsersToProcess(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	HasProcess := User.HasProcess(ProcessID)
 	HasRole := User.HasRole("processes_administration")
-	if !HasProcess && !HasRole {
+	if !HasRole {
 		return c.JSON(403, "Forbidden")
 	}
 	var Process ORM.Proceso
@@ -286,7 +285,7 @@ func (h *Handler) AddUsersToProcess(c echo.Context) error {
 	}
 	// Get the users to add from query params
 	UserIDStr := c.QueryParam("users_id") // comma separated list of users id, like: 1,2,3,4
-	UserList := []int{}
+	UserList := make([]int, 0)
 	for _, UserID := range strings.Split(UserIDStr, ",") {
 		UserIDInt, err := strconv.Atoi(UserID)
 		if err != nil {
