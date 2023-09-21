@@ -362,6 +362,7 @@ func (h *Handler) GetUserData(c echo.Context) error {
 		file.SetCellValue(sheetName, "M2", "User Participation (Per ticket)") // separate emails with semicolon
 		file.SetCellValue(sheetName, "N2", "Time Spent")
 		file.SetCellValue(sheetName, "O2", "ID Organization")
+		file.SetCellValue(sheetName, "P2", "Organization Name")
 		ActualRow := 3
 		for _, proceso := range UserData.Procesos {
 			proceso.Get(h.DB, proceso.ID) // obtener toda la data del proceso
@@ -397,6 +398,14 @@ func (h *Handler) GetUserData(c echo.Context) error {
 			file.SetCellValue(sheetName, "M"+strconv.Itoa(ActualRow), Participation)
 			file.SetCellValue(sheetName, "N"+strconv.Itoa(ActualRow), *TimeSpent)
 			file.SetCellValue(sheetName, "O"+strconv.Itoa(ActualRow), proceso.OrganizacionID)
+			OrgName := ""
+			for _, org := range UserData.Organizaciones {
+				if org.ID == proceso.OrganizacionID {
+					OrgName = org.Nombre
+					break
+				}
+			}
+			file.SetCellValue(sheetName, "P"+strconv.Itoa(ActualRow), OrgName)
 			ActualRow++
 		}
 
@@ -460,15 +469,6 @@ func (h *Handler) GetUserData(c echo.Context) error {
 		file.NewSheet(sheetName)
 		// Set sheet title
 		file.SetCellValue(sheetName, "A1", "Tickets Details")
-		// Headers:
-		// ID
-		//TicketID
-		//Detalle
-		//FechaInicio
-		//FechaFin
-		//UsuarioID
-		//Diagnostico
-		//Duration
 		file.SetCellValue(sheetName, "A2", "ID")
 		file.SetCellValue(sheetName, "B2", "Ticket ID")
 		file.SetCellValue(sheetName, "C2", "Detalle")
@@ -731,7 +731,6 @@ func sheetJobsHistory(file *excelize.File, jobsHistory []*ORM.JobHistory) {
 	file.SetCellValue(sheetName, "I2", "Job ID")
 	file.SetCellValue(sheetName, "J2", "Duration")
 	file.SetCellValue(sheetName, "K2", "Monitor Exception")
-	file.SetCellValue(sheetName, "L2", "Logs Count")
 	// order by end time newest first
 	sort.Slice(jobsHistory, func(i, j int) bool {
 		return jobsHistory[i].EndTime.After(jobsHistory[j].EndTime)
@@ -748,7 +747,6 @@ func sheetJobsHistory(file *excelize.File, jobsHistory []*ORM.JobHistory) {
 		file.SetCellValue(sheetName, "I"+strconv.Itoa(ActualRow), job.JobID)
 		file.SetCellValue(sheetName, "J"+strconv.Itoa(ActualRow), job.Duration)
 		file.SetCellValue(sheetName, "K"+strconv.Itoa(ActualRow), job.MonitorException)
-		file.SetCellValue(sheetName, "L"+strconv.Itoa(ActualRow), len(job.Logs))
 		ActualRow++
 	}
 }

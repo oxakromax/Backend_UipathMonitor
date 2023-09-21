@@ -247,5 +247,5 @@ func (o *Organizacion) GetAll(db *gorm.DB) []*Organizacion {
 }
 
 func (o *Organizacion) Get(db *gorm.DB, id uint) {
-	db.Preload("Procesos").Preload("Clientes").Preload("Usuarios").First(&o, id)
+	db.Preload("Procesos").Preload("Procesos.Usuarios").Preload("Clientes").Preload("Usuarios").First(&o, id)
 }

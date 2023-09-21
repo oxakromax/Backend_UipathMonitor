@@ -36,7 +36,7 @@ func (u *Usuario) CheckPassword(password string) bool {
 }
 
 func (u *Usuario) GetByEmail(db *gorm.DB, email string) {
-	db.Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Where("email = ?", email).First(&u)
+	db.Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Find(&u, "email = ?", email)
 }
 
 func (Usuario) TableName() string {
@@ -50,7 +50,7 @@ func (Usuario) GetAll(db *gorm.DB) []*Usuario {
 }
 
 func (u *Usuario) Get(db *gorm.DB, id uint) {
-	db.Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Preload("Organizaciones").Preload("Tickets_Procesos").Preload("Tickets_Detalle").First(&u, id)
+	db.Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Preload("Organizaciones").Preload("Tickets_Procesos").Preload("Tickets_Detalle").Find(&u, id)
 }
 
 func (u *Usuario) HasRole(role string) bool {
@@ -99,7 +99,7 @@ func (u *Usuario) FillEmptyFields(db *gorm.DB) {
 }
 
 func (u *Usuario) GetComplete(db *gorm.DB) {
-	db.Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Preload("Organizaciones").Preload("Organizaciones.Procesos").Preload("Tickets_Procesos").Preload("Tickets_Detalle").First(&u, u.ID)
+	db.Preload("Roles").Preload("Procesos").Preload("Roles.Rutas").Preload("Organizaciones").Preload("Organizaciones.Procesos").Preload("Tickets_Procesos").Preload("Tickets_Detalle").Find(&u, u.ID)
 }
 
 func (u *Usuario) GetCantityTicketsClosed(db *gorm.DB) int64 {

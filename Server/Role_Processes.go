@@ -37,6 +37,9 @@ func (h *Handler) GetProcess(c echo.Context) error {
 		sort.Slice(Process.TicketsProcesos, func(i, j int) bool {
 			return Process.TicketsProcesos[i].ID > Process.TicketsProcesos[j].ID
 		})
+		if Process.ID == 0 {
+			return c.JSON(404, "Process not found")
+		}
 		return c.JSON(200, Process)
 	}
 
@@ -58,6 +61,9 @@ func (h *Handler) GetPossibleUsers(c echo.Context) error {
 	}
 	if User.HasRole("processes_administration") || User.HasProcess(ProcessID) {
 		Process.Get(h.DB, uint(ProcessID))
+		if Process.ID == 0 {
+			return c.JSON(404, "Process not found")
+		}
 		Org := new(ORM.Organizacion)
 		Org.Get(h.DB, Process.OrganizacionID)
 		UsersReturn := make([]*ORM.Usuario, 0)
@@ -92,6 +98,9 @@ func (h *Handler) GetPossibleClients(c echo.Context) error {
 	}
 	if User.HasRole("processes_administration") || User.HasProcess(ProcessID) {
 		Process.Get(h.DB, uint(ProcessID))
+		if Process.ID == 0 {
+			return c.JSON(404, "Process not found")
+		}
 		Org := new(ORM.Organizacion)
 		Org.Get(h.DB, Process.OrganizacionID)
 		ClientsReturn := []*ORM.Cliente{}

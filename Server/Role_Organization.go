@@ -269,6 +269,17 @@ func (h *Handler) UpdateOrganizationUser(c echo.Context) error {
 			if err != nil {
 				return c.JSON(http.StatusBadRequest, err)
 			}
+			// Search if the user is in any process of the organization
+			for _, proceso := range Organization.Procesos {
+				for _, usuario := range proceso.Usuarios {
+					if usuario.ID == UserID {
+						err := h.DB.Model(proceso).Association("Usuarios").Delete(usuario)
+						if err != nil {
+							return c.JSON(http.StatusBadRequest, err)
+						}
+					}
+				}
+			}
 		}
 	}
 	h.DB.Preload("Usuarios").Save(Organization)
