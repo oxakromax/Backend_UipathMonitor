@@ -125,6 +125,11 @@ func (h *Handler) UpdateProfile(c echo.Context) error {
 	h.DB.Updates(&User)
 	// Ocultar la contraseña del usuario
 	User.Password = ""
+	for _, organizacion := range User.Organizaciones {
+		organizacion.AppSecret = ""
+		organizacion.AppID = ""
+		organizacion.AppScope = ""
+	}
 	return c.JSON(http.StatusOK, User)
 }
 func (h *Handler) GetUserOrganizations(c echo.Context) error {

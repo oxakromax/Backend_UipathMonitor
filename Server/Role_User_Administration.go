@@ -332,7 +332,20 @@ func (h *Handler) UpdateUser(c echo.Context) error {
 	if err := c.Bind(User); err != nil {
 		return c.JSON(http.StatusBadRequest, "Invalid request")
 	}
-	// Sobre escribir roles del usuario
+	// Sobre escribir roles del usuario y verificar que aun mantenga el rol 3 "user"
+	// Si el usuario no tiene el rol 3 "user" agregarlo
+	rol := new(ORM.Rol)
+	h.DB.Where("nombre = ?", "user").First(&rol)
+	Found := false
+	for _, userRol := range User.Roles {
+		if userRol.ID == rol.ID {
+			Found = true
+			break
+		}
+	}
+	if !Found {
+		User.Roles = append(User.Roles, rol)
+	}
 	err = h.DB.Model(&User).Association("Roles").Replace(User.Roles)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, "Error while updating user")

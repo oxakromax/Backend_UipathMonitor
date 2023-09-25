@@ -20,7 +20,7 @@ func (h *Handler) GetOrgData(c echo.Context) error {
 		return err
 	}
 
-	if !User.HasRole("organization") && !User.HasRole("downloader") {
+	if !User.HasRole("organization") {
 		return c.JSON(403, "You don't have permission to do this")
 	}
 
@@ -294,8 +294,8 @@ func (h *Handler) GetUserData(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	if !User.HasRole("user_administration") && !User.HasRole("downloader") {
-		return c.JSON(403, "You don't have permission to do this")
+	if !User.HasRole("user_administration") {
+		return echo.ErrUnauthorized
 	}
 	// Get the users to retrieve from query params
 	UserIDStr := c.QueryParam("id") // comma separated list of users id, like: 1,2,3,4

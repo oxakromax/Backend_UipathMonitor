@@ -174,7 +174,7 @@ func (h *Handler) RefreshDataBase(e *echo.Echo) {
 		if strings.HasPrefix(route.Route, "/monitor") {
 			rolesMap["monitor"].Rutas = append(rolesMap["monitor"].Rutas, route)
 		}
-		if strings.HasPrefix(route.Route, "/download") {
+		if strings.HasPrefix(route.Route, "/admin/downloads") {
 			rolesMap["downloader"].Rutas = append(rolesMap["downloader"].Rutas, route)
 		}
 	}
