@@ -15,7 +15,7 @@ func (h *Handler) UpdateUipathProcess(c echo.Context) error {
 	Orgs := new(ORM.Organizacion).GetAll(h.DB)
 	var wg = new(sync.WaitGroup)
 	errorChannel := make(chan error, 1000)
-	var errorList []error
+	var errorList = make([]error, 0)
 
 	for _, Org := range Orgs {
 		wg.Add(1)

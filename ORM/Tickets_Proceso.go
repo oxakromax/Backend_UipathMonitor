@@ -33,12 +33,14 @@ func (tp *TicketsProceso) GetTipo(db *gorm.DB) string {
 	// "Mejora": 2,
 	// "Mantenimiento": 3,
 	// "Otro": 4,
-	if tp.Tipo == nil {
+	if tp.Tipo == nil && db != nil { // If the Tipo is nil, get it from the database
 		Tipo := new(TicketsTipo)
 		db.First(&Tipo, tp.TipoID)
 		tp.Tipo = Tipo
+	} else if tp.Tipo == nil { // If the Tipo is nil and the database is nil, return empty string
+		return ""
 	}
-	return tp.Tipo.Nombre
+	return tp.Tipo.Nombre // Return the Tipo name
 }
 
 // TableName IncidenteProcesos Tablename: incidentes_procesos

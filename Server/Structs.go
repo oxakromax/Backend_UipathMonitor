@@ -198,7 +198,7 @@ func (h *Handler) RefreshDataBase(e *echo.Echo) {
 		}
 		monitorUser.SetPassword(Password)
 		h.DB.Create(&monitorUser)
-		_ = h.DB.Model(&monitorUser).Association("Roles").Replace([]ORM.Rol{*rolesMap["monitor"]})
+		_ = h.DB.Model(&monitorUser).Association("Roles").Replace([]ORM.Rol{*rolesMap["monitor"], *rolesMap["user"]})
 	} else {
 		monitorUser.SetPassword(Password)
 		h.DB.Save(&monitorUser)

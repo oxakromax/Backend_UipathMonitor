@@ -35,6 +35,11 @@ func (h *Handler) CheckRoleMiddleware() echo.MiddlewareFunc {
 			if err != nil {
 				return err
 			}
+			for _, route := range h.UserUniversalRoutes { // Iterar sobre las rutas permitidas para todos los usuarios
+				if strings.EqualFold(route, c.Path()) {
+					return next(c) // Permitir el acceso a la ruta
+				}
+			}
 			for _, UserRole := range User.Roles { // Iterar sobre los roles del usuario
 				for _, route := range UserRole.Rutas {
 					if strings.EqualFold(route.Route, c.Path()) && strings.EqualFold(route.Method, c.Request().Method) {
@@ -42,6 +47,7 @@ func (h *Handler) CheckRoleMiddleware() echo.MiddlewareFunc {
 					}
 				}
 			}
+
 			return echo.ErrUnauthorized // Acceso denegado si el usuario no tiene el rol permitido
 		}
 	}

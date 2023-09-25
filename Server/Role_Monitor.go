@@ -11,7 +11,7 @@ import (
 // GetOrgs
 func (h *Handler) GetOrgs(c echo.Context) error {
 	var organizaciones []*ORM.Organizacion
-	h.DB.Preload("Procesos").Preload("Clientes").Preload("Usuarios").Preload("Procesos.TicketsProcesos").Find(&organizaciones)
+	h.DB.Preload("Procesos").Preload("Clientes").Preload("Usuarios").Preload("Procesos.TicketsProcesos").Preload("Procesos.TicketsProcesos.Tipo").Find(&organizaciones)
 	return c.JSON(200, organizaciones)
 }
 
