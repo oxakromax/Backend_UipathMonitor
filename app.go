@@ -9,7 +9,7 @@ import (
 	"github.com/oxakromax/Backend_UipathMonitor/ORM"
 	"github.com/oxakromax/Backend_UipathMonitor/Server"
 	"github.com/oxakromax/Backend_UipathMonitor/functions"
-	"gorm.io/driver/postgres"
+	"gorm.io/driver/postgres" // driver para conectar a postgres, se puede cambiar por mysql, sqlite3, etc
 	"gorm.io/gorm"
 	"net/http"
 	"os"
@@ -76,7 +76,6 @@ func main() {
 	}
 	middlewares(e, H)
 	routes(e, H)
-
 	go func() {
 		// Fl0 needs to open the port in less than 60 seconds, so we do it in a goroutine
 		H.DB = OpenDB()

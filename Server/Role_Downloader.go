@@ -813,5 +813,4 @@ func ZipFiles(filesMap map[string]*bytes.Buffer) []byte {
 	}
 	zipWriter.Close()
 	return zipBuffer.Bytes()
-
 }
