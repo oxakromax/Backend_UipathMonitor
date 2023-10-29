@@ -52,7 +52,11 @@ Antes de entrar en materia, asegúrate de tener instalado lo siguiente:
    Si todo sale bien, deberías ver un mensaje diciendo que la aplicación está corriendo y escuchando en el puerto que configuraste.
 
 ## ¿Y Ahora? ¡A Usar la App!
-5. Abre tu navegador y pon `http://localhost:8080` (o el puerto que hayas elegido) en la barra de direcciones para empezar a usar la aplicación.
+Recuerda que este es el servidor API Rest de un conjunto de servicios, para usar la App deberás de ver el siguiente repositorio: [Frontend](https://github.com/oxakromax/Frontend_UipathMonitor)
+
+Además para disfrutar de todas las cualidades del sistema, el servicio de monitoreo se encuentra en el siguiente respositorio: [Servicio Monitor](https://github.com/oxakromax/Monitor_UipathMonitor)
+
+De todas maneras puedes probar cada una de las rutas de la app con Postman, aquí tienes un repositorio de ejemplos de peticiones para que puedas explorar las funcionalidades 🙌: [Postman Repository](https://www.postman.com/altimetry-candidate-39737582/workspace/api-central-backend/collection/26219135-e7851605-7c71-45f3-a48b-de4d8c9f185e?action=share&creator=26219135)
 
 ---
 
