@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 func OpenDB() *gorm.DB {
@@ -35,6 +36,16 @@ func OpenDB() *gorm.DB {
 	if err != nil {
 		panic("failed to connect database")
 	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		panic("failed to connect database")
+	}
+	// Pool settings
+	sqlDB.SetMaxIdleConns(30)
+	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetConnMaxLifetime(time.Hour)
+	sqlDB.SetConnMaxIdleTime(time.Minute * 10)
+	// Migrate the schema
 	createEnumTypeIfNotExists(db)
 	err = db.AutoMigrate(
 		&ORM.Organizacion{}, &ORM.Cliente{}, &ORM.Proceso{},
