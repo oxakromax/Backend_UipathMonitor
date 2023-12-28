@@ -10,11 +10,11 @@ import (
 	"strings"
 )
 
-const PathLogo = "./Mail/Templates/Assets/Logo.png"
-const PathIncidentChange = "./Mail/Templates/IncidentChange.html"
-const PathNewIncident = "./Mail/Templates/NewTicket.html"
-const PathNewUser = "./Mail/Templates/NewUser.html"
-const PathNewPassword = "./Mail/Templates/NewPassword.html" //nolint:gosec
+const PathLogo = "Mail/Templates/Assets/Logo.png"
+const PathIncidentChange = "Mail/Templates/IncidentChange.html"
+const PathNewIncident = "Mail/Templates/NewTicket.html"
+const PathNewUser = "Mail/Templates/NewUser.html"
+const PathNewPassword = "Mail/Templates/NewPassword.html" //nolint:gosec
 
 type IncidentChange struct {
 	ID            int
@@ -65,8 +65,9 @@ func ConvertToBase64(pathToImage string) string {
 }
 
 func GetBodyNewTicket(newIncident NewTicket) string {
-	newIncident.LogoBase64 = ConvertToBase64(PathLogo)
-	t, _ := template.ParseFiles(PathNewIncident)
+	actualPath, _ := os.Getwd()
+	newIncident.LogoBase64 = ConvertToBase64(actualPath + "/" + PathLogo)
+	t, _ := template.ParseFiles(actualPath + "/" + PathNewIncident)
 	body := new(strings.Builder)
 	err := t.Execute(body, newIncident)
 	if err != nil {
@@ -76,8 +77,9 @@ func GetBodyNewTicket(newIncident NewTicket) string {
 }
 
 func GetBodyTicketChange(incidentChange IncidentChange) string {
-	incidentChange.LogoBase64 = ConvertToBase64(PathLogo)
-	t, _ := template.ParseFiles(PathIncidentChange)
+	actualPath, _ := os.Getwd()
+	incidentChange.LogoBase64 = ConvertToBase64(actualPath + "/" + PathLogo)
+	t, _ := template.ParseFiles(actualPath + "/" + PathIncidentChange)
 	body := new(strings.Builder)
 	err := t.Execute(body, incidentChange)
 	if err != nil {
@@ -87,8 +89,9 @@ func GetBodyTicketChange(incidentChange IncidentChange) string {
 }
 
 func GetBodyNewUser(newUser NewUser) string {
-	newUser.LogoBase64 = ConvertToBase64(PathLogo)
-	t, _ := template.ParseFiles(PathNewUser)
+	actualPath, _ := os.Getwd()
+	newUser.LogoBase64 = ConvertToBase64(actualPath + "/" + PathLogo)
+	t, _ := template.ParseFiles(actualPath + "/" + PathNewUser)
 	body := new(strings.Builder)
 	err := t.Execute(body, newUser)
 	if err != nil {
@@ -98,8 +101,9 @@ func GetBodyNewUser(newUser NewUser) string {
 }
 
 func GetBodyNewPassword(newPassword NewPassword) string {
-	newPassword.LogoBase64 = ConvertToBase64(PathLogo)
-	t, _ := template.ParseFiles(PathNewPassword)
+	actualPath, _ := os.Getwd()
+	newPassword.LogoBase64 = ConvertToBase64(actualPath + "/" + PathLogo)
+	t, _ := template.ParseFiles(actualPath + "/" + PathNewPassword)
 	body := new(strings.Builder)
 	err := t.Execute(body, newPassword)
 	if err != nil {
