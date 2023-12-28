@@ -11,11 +11,11 @@ import (
 	"strings"
 )
 
-const PathLogo = "Assets/Logo.png"
-const PathIncidentChange = "IncidentChange.html"
-const PathNewIncident = "NewTicket.html"
-const PathNewUser = "NewUser.html"
-const PathNewPassword = "NewPassword.html" //nolint:gosec
+const PathLogo = "Mail/Templates/Assets/Logo.png"
+const PathIncidentChange = "Mail/Templates/IncidentChange.html"
+const PathNewIncident = "Mail/Templates/NewTicket.html"
+const PathNewUser = "Mail/Templates/NewUser.html"
+const PathNewPassword = "Mail/Templates/NewPassword.html" //nolint:gosec
 
 //go:embed Templates/*
 var templatesFS embed.FS
