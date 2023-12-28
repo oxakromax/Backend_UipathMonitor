@@ -2,19 +2,23 @@ package Mail
 
 import (
 	"bufio"
+	"embed"
 	"encoding/base64"
 	"fmt"
 	"html/template"
 	"io"
-	"os"
+	"io/fs"
 	"strings"
 )
 
-const PathLogo = "Mail/Templates/Assets/Logo.png"
-const PathIncidentChange = "Mail/Templates/IncidentChange.html"
-const PathNewIncident = "Mail/Templates/NewTicket.html"
-const PathNewUser = "Mail/Templates/NewUser.html"
-const PathNewPassword = "Mail/Templates/NewPassword.html" //nolint:gosec
+const PathLogo = "Assets/Logo.png"
+const PathIncidentChange = "IncidentChange.html"
+const PathNewIncident = "NewTicket.html"
+const PathNewUser = "NewUser.html"
+const PathNewPassword = "NewPassword.html" //nolint:gosec
+
+//go:embed Templates/*
+var templatesFS embed.FS
 
 type IncidentChange struct {
 	ID            int
@@ -45,12 +49,12 @@ type NewPassword struct {
 }
 
 func ConvertToBase64(pathToImage string) string {
-	file, err := os.Open(pathToImage)
+	file, err := templatesFS.Open(pathToImage)
 	if err != nil {
 		fmt.Println(err)
 		return ""
 	}
-	defer func(file *os.File) {
+	defer func(file fs.File) {
 		err := file.Close()
 		if err != nil {
 			fmt.Println(err)
@@ -65,9 +69,12 @@ func ConvertToBase64(pathToImage string) string {
 }
 
 func GetBodyNewTicket(newIncident NewTicket) string {
-	actualPath, _ := os.Getwd()
-	newIncident.LogoBase64 = ConvertToBase64(actualPath + "/" + PathLogo)
-	t, _ := template.ParseFiles(actualPath + "/" + PathNewIncident)
+	newIncident.LogoBase64 = ConvertToBase64(PathLogo)
+	t, terr := template.ParseFS(templatesFS, PathNewIncident)
+	if terr != nil {
+		fmt.Println(terr)
+		return ""
+	}
 	body := new(strings.Builder)
 	err := t.Execute(body, newIncident)
 	if err != nil {
@@ -77,9 +84,12 @@ func GetBodyNewTicket(newIncident NewTicket) string {
 }
 
 func GetBodyTicketChange(incidentChange IncidentChange) string {
-	actualPath, _ := os.Getwd()
-	incidentChange.LogoBase64 = ConvertToBase64(actualPath + "/" + PathLogo)
-	t, _ := template.ParseFiles(actualPath + "/" + PathIncidentChange)
+	incidentChange.LogoBase64 = ConvertToBase64(PathLogo)
+	t, terr := template.ParseFS(templatesFS, PathIncidentChange)
+	if terr != nil {
+		fmt.Println(terr)
+		return ""
+	}
 	body := new(strings.Builder)
 	err := t.Execute(body, incidentChange)
 	if err != nil {
@@ -89,9 +99,12 @@ func GetBodyTicketChange(incidentChange IncidentChange) string {
 }
 
 func GetBodyNewUser(newUser NewUser) string {
-	actualPath, _ := os.Getwd()
-	newUser.LogoBase64 = ConvertToBase64(actualPath + "/" + PathLogo)
-	t, _ := template.ParseFiles(actualPath + "/" + PathNewUser)
+	newUser.LogoBase64 = ConvertToBase64(PathLogo)
+	t, terr := template.ParseFS(templatesFS, PathNewUser)
+	if terr != nil {
+		fmt.Println(terr)
+		return ""
+	}
 	body := new(strings.Builder)
 	err := t.Execute(body, newUser)
 	if err != nil {
@@ -101,9 +114,8 @@ func GetBodyNewUser(newUser NewUser) string {
 }
 
 func GetBodyNewPassword(newPassword NewPassword) string {
-	actualPath, _ := os.Getwd()
-	newPassword.LogoBase64 = ConvertToBase64(actualPath + "/" + PathLogo)
-	t, _ := template.ParseFiles(actualPath + "/" + PathNewPassword)
+	newPassword.LogoBase64 = ConvertToBase64(PathLogo)
+	t, _ := template.ParseFS(templatesFS, PathNewPassword)
 	body := new(strings.Builder)
 	err := t.Execute(body, newPassword)
 	if err != nil {
